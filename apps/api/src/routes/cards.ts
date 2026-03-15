@@ -1,12 +1,14 @@
 ﻿import { Router } from 'express';
-import { mockCards } from '../data/mockCards';
+import { getAllCards } from '../services/cards';
 
 const router = Router();
 
-router.get('/', (_req, res) => {
+router.get('/', async (_req, res) => {
+  const cards = await getAllCards();
+
   res.json({
-    items: mockCards,
-    total: mockCards.length,
+    items: cards,
+    total: cards.length,
   });
 });
 

@@ -7,7 +7,7 @@ export type OverviewMetrics = {
   possibleRecurring: number;
 };
 
-export function buildOverviewMetrics(): OverviewMetrics {
+export async function buildOverviewMetrics(): Promise<OverviewMetrics> {
   const totalMonthlyCost = Number(
     mockSubscriptions.reduce((sum, item) => sum + item.monthlyPrice, 0).toFixed(2)
   );

@@ -3,8 +3,9 @@ import { buildOverviewMetrics } from '../services/overview';
 
 const router = Router();
 
-router.get('/', (_req, res) => {
-  res.json(buildOverviewMetrics());
+router.get('/', async (_req, res) => {
+  const metrics = await buildOverviewMetrics();
+  res.json(metrics);
 });
 
 export default router;
