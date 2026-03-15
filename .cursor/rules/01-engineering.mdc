@@ -1,0 +1,8 @@
+Engineering rules:
+- Use TypeScript wherever possible
+- Avoid unnecessary abstractions
+- Build the simplest working version first
+- Before making changes, briefly list the files you plan to modify
+- After making changes, briefly summarize what was done
+- If the task is ambiguous, propose 2 options and choose one
+- Do not touch unrelated files

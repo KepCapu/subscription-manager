@@ -1,0 +1,19 @@
+You are working on a mobile app called Subscription Manager.
+
+MVP focus:
+- Overview
+- Cards
+- Card Details
+- Subscriptions
+- Profile
+
+Do not add:
+- investments
+- loans
+- full banking features
+- warranties
+- general purchases
+- email parsing in the first iteration unless explicitly required
+
+Main product value:
+The user can clearly see which subscriptions are draining money and from which cards.
