@@ -2,25 +2,37 @@
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { fetchOverview } from '../api/overview';
+import { fetchSubscriptions } from '../api/subscriptions';
+import { fetchCards } from '../api/cards';
 import { OverviewData } from '../types/overview';
+import { Subscription } from '../types/subscription';
+import { Card } from '../types/card';
 
 export default function OverviewScreen() {
   const [overview, setOverview] = useState<OverviewData | null>(null);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadOverview() {
+    async function loadOverviewData() {
       try {
         setLoading(true);
         setError(null);
 
-        const data = await fetchOverview();
+        const [overviewData, subscriptionsData, cardsData] = await Promise.all([
+          fetchOverview(),
+          fetchSubscriptions(),
+          fetchCards(),
+        ]);
 
         if (isMounted) {
-          setOverview(data);
+          setOverview(overviewData);
+          setSubscriptions(subscriptionsData);
+          setCards(cardsData);
         }
       } catch (err) {
         console.error('Overview load error:', err);
@@ -35,7 +47,7 @@ export default function OverviewScreen() {
       }
     }
 
-    loadOverview();
+    loadOverviewData();
 
     return () => {
       isMounted = false;
@@ -46,8 +58,10 @@ export default function OverviewScreen() {
   const activeSubscriptions = overview ? overview.activeSubscriptions : 0;
   const upcomingRenewals = overview ? overview.upcomingRenewals.toFixed(2) : '0.00';
   const possibleRecurring = overview ? overview.possibleRecurring : 0;
-  const topSubscriptions = overview ? overview.topExpensive : [];
-  const linkedCards = overview ? overview.linkedCards : [];
+
+  const topSubscriptions = [...subscriptions]
+    .sort((a, b) => b.monthlyPrice - a.monthlyPrice)
+    .slice(0, 3);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -154,13 +168,13 @@ export default function OverviewScreen() {
 
           {loading ? (
             <Text style={styles.infoText}>Loading cards...</Text>
-          ) : linkedCards.length === 0 ? (
+          ) : cards.length === 0 ? (
             <Text style={styles.infoText}>No cards found.</Text>
           ) : (
-            linkedCards.map((item, index) => (
+            cards.map((item, index) => (
               <View
                 key={item.id}
-                style={[styles.listRow, index !== linkedCards.length - 1 && styles.rowBorder]}
+                style={[styles.listRow, index !== cards.length - 1 && styles.rowBorder]}
               >
                 <Text style={styles.rowTitle}>
                   {item.name} ending {item.last4}
