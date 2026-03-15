@@ -1,14 +1,20 @@
 ﻿import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { mockSubscriptions } from '../data/mockSubscriptions';
+
+type Props = {
+  navigation: {
+    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  };
+};
 
 const totalActiveSubscriptions = mockSubscriptions.length;
 const totalMonthlyCost = mockSubscriptions
   .reduce((sum, item) => sum + item.monthlyPrice, 0)
   .toFixed(2);
 
-export default function SubscriptionsScreen() {
+export default function SubscriptionsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -30,8 +36,14 @@ export default function SubscriptionsScreen() {
           <Text style={styles.sectionTitle}>All subscriptions</Text>
 
           {mockSubscriptions.map((subscription, index) => (
-            <View
+            <TouchableOpacity
               key={subscription.id}
+              onPress={() =>
+                navigation.navigate('SubscriptionDetails', {
+                  subscriptionId: subscription.id,
+                })
+              }
+              activeOpacity={0.8}
               style={[
                 styles.subscriptionRow,
                 index !== mockSubscriptions.length - 1 && styles.rowBorder,
@@ -46,7 +58,7 @@ export default function SubscriptionsScreen() {
               <Text style={styles.rowValue}>
                 EUR {subscription.monthlyPrice.toFixed(2)}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
