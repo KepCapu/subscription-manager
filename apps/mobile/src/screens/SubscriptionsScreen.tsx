@@ -1,16 +1,12 @@
-import React from 'react';
+﻿import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import SectionCard from '../components/SectionCard';
 import { colors } from '../theme/colors';
+import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const subscriptions = [
-  { name: 'Netflix', price: 'EUR 15.99 / month', card: 'Visa ending 4421', status: 'Active' },
-  { name: 'Spotify', price: 'EUR 9.99 / month', card: 'Visa ending 4421', status: 'Active' },
-  { name: 'Adobe', price: 'EUR 24.99 / month', card: 'Mastercard ending 7710', status: 'Active' },
-  { name: 'YouTube Premium', price: 'EUR 8.50 / month', card: 'Visa ending 4421', status: 'Active' },
-  { name: 'Apple One', price: 'EUR 16.95 / month', card: 'Mastercard ending 7710', status: 'Active' },
-  { name: 'Canva', price: 'EUR 11.99 / month', card: 'Revolut ending 0023', status: 'Active' },
-];
+const totalActiveSubscriptions = mockSubscriptions.length;
+const totalMonthlyCost = mockSubscriptions
+  .reduce((sum, item) => sum + item.monthlyPrice, 0)
+  .toFixed(2);
 
 export default function SubscriptionsScreen() {
   return (
@@ -20,30 +16,39 @@ export default function SubscriptionsScreen() {
 
         <View style={styles.heroCard}>
           <View style={styles.summaryRow}>
-            <Text style={styles.heroLabel}>Total active subscriptions</Text>
-            <Text style={styles.heroValue}>12</Text>
+            <Text style={styles.summaryLabel}>Total active subscriptions</Text>
+            <Text style={styles.summaryValue}>{totalActiveSubscriptions}</Text>
           </View>
+
           <View style={styles.summaryRow}>
-            <Text style={styles.heroLabel}>Total monthly cost</Text>
-            <Text style={styles.heroValue}>EUR 89.50</Text>
+            <Text style={styles.summaryLabel}>Total monthly cost</Text>
+            <Text style={styles.summaryValue}>EUR {totalMonthlyCost}</Text>
           </View>
         </View>
 
-        <SectionCard title="All subscriptions">
-          {subscriptions.map((item, index) => (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>All subscriptions</Text>
+
+          {mockSubscriptions.map((subscription, index) => (
             <View
-              key={item.name}
-              style={[styles.listRow, index !== subscriptions.length - 1 && styles.rowBorder]}
+              key={subscription.id}
+              style={[
+                styles.subscriptionRow,
+                index !== mockSubscriptions.length - 1 && styles.rowBorder,
+              ]}
             >
-              <View style={styles.rowLeft}>
-                <Text style={styles.rowTitle}>{item.name}</Text>
-                <Text style={styles.rowSubtext}>{item.card}</Text>
-                <Text style={styles.rowStatus}>{item.status}</Text>
+              <View style={styles.leftCol}>
+                <Text style={styles.rowTitle}>{subscription.name}</Text>
+                <Text style={styles.rowSubtext}>{subscription.billingCardName}</Text>
+                <Text style={styles.rowStatus}>{subscription.status}</Text>
               </View>
-              <Text style={styles.rowValue}>{item.price}</Text>
+
+              <Text style={styles.rowValue}>
+                EUR {subscription.monthlyPrice.toFixed(2)}
+              </Text>
             </View>
           ))}
-        </SectionCard>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -71,26 +76,40 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 14,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
   },
-  heroLabel: {
+  summaryLabel: {
     fontSize: 15,
     color: colors.muted,
   },
-  heroValue: {
+  summaryValue: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
   },
-  listRow: {
+  sectionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 14,
+  },
+  subscriptionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 14,
     gap: 16,
   },
@@ -98,7 +117,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  rowLeft: {
+  leftCol: {
     flex: 1,
   },
   rowTitle: {
@@ -114,8 +133,8 @@ const styles = StyleSheet.create({
   rowStatus: {
     fontSize: 13,
     color: colors.success,
-    marginTop: 2,
     fontWeight: '600',
+    marginTop: 6,
   },
   rowValue: {
     fontSize: 15,
