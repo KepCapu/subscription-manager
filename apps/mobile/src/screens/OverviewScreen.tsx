@@ -1,27 +1,54 @@
-﻿import React from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
-import { mockSubscriptions } from '../data/mockSubscriptions';
-import { mockCards } from '../data/mockCards';
-
-const totalMonthlyCost = mockSubscriptions
-  .reduce((sum, item) => sum + item.monthlyPrice, 0)
-  .toFixed(2);
-
-const activeSubscriptionsCount = mockSubscriptions.length;
-
-const upcomingRenewalsValue = mockSubscriptions
-  .slice(0, 2)
-  .reduce((sum, item) => sum + item.monthlyPrice, 0)
-  .toFixed(2);
-
-const possibleRecurringCount = 2;
-
-const topSubscriptions = [...mockSubscriptions]
-  .sort((a, b) => b.monthlyPrice - a.monthlyPrice)
-  .slice(0, 3);
+import { fetchOverview } from '../api/overview';
+import { OverviewData } from '../types/overview';
 
 export default function OverviewScreen() {
+  const [overview, setOverview] = useState<OverviewData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOverview() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await fetchOverview();
+
+        if (isMounted) {
+          setOverview(data);
+        }
+      } catch (err) {
+        console.error('Overview load error:', err);
+
+        if (isMounted) {
+          setError('Could not load overview');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadOverview();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const totalMonthlyCost = overview ? overview.totalMonthlyCost.toFixed(2) : '0.00';
+  const activeSubscriptions = overview ? overview.activeSubscriptions : 0;
+  const upcomingRenewals = overview ? overview.upcomingRenewals.toFixed(2) : '0.00';
+  const possibleRecurring = overview ? overview.possibleRecurring : 0;
+  const topSubscriptions = overview ? overview.topExpensive : [];
+  const linkedCards = overview ? overview.linkedCards : [];
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -29,7 +56,9 @@ export default function OverviewScreen() {
 
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Total Monthly Subscriptions</Text>
-          <Text style={styles.heroValue}>EUR {totalMonthlyCost}</Text>
+          <Text style={styles.heroValue}>
+            {loading ? 'Loading...' : 'EUR ' + totalMonthlyCost}
+          </Text>
           <Text style={styles.heroSubvalue}>/ month</Text>
         </View>
 
@@ -37,36 +66,49 @@ export default function OverviewScreen() {
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Active subscriptions</Text>
             <Text style={[styles.summaryValue, { color: colors.primary }]}>
-              {activeSubscriptionsCount}
+              {loading ? '-' : activeSubscriptions}
             </Text>
           </View>
 
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Upcoming renewals</Text>
             <Text style={[styles.summaryValue, { color: colors.success }]}>
-              EUR {upcomingRenewalsValue}
+              {loading ? '...' : 'EUR ' + upcomingRenewals}
             </Text>
           </View>
 
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Possible recurring</Text>
             <Text style={[styles.summaryValue, { color: colors.warning }]}>
-              {possibleRecurringCount}
+              {loading ? '-' : possibleRecurring}
             </Text>
           </View>
         </View>
 
+        {error && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Top expensive subscriptions</Text>
-          {topSubscriptions.map((item, index) => (
-            <View
-              key={item.id}
-              style={[styles.listRow, index !== topSubscriptions.length - 1 && styles.rowBorder]}
-            >
-              <Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)} / month</Text>
-            </View>
-          ))}
+
+          {loading ? (
+            <Text style={styles.infoText}>Loading subscriptions...</Text>
+          ) : topSubscriptions.length === 0 ? (
+            <Text style={styles.infoText}>No subscriptions found.</Text>
+          ) : (
+            topSubscriptions.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.listRow, index !== topSubscriptions.length - 1 && styles.rowBorder]}
+              >
+                <Text style={styles.rowTitle}>{item.name}</Text>
+                <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)} / month</Text>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.sectionCard}>
@@ -109,17 +151,24 @@ export default function OverviewScreen() {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Linked cards</Text>
-          {mockCards.map((item, index) => (
-            <View
-              key={item.id}
-              style={[styles.listRow, index !== mockCards.length - 1 && styles.rowBorder]}
-            >
-              <Text style={styles.rowTitle}>
-                {item.name} ending {item.last4}
-              </Text>
-              <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)}</Text>
-            </View>
-          ))}
+
+          {loading ? (
+            <Text style={styles.infoText}>Loading cards...</Text>
+          ) : linkedCards.length === 0 ? (
+            <Text style={styles.infoText}>No cards found.</Text>
+          ) : (
+            linkedCards.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.listRow, index !== linkedCards.length - 1 && styles.rowBorder]}
+              >
+                <Text style={styles.rowTitle}>
+                  {item.name} ending {item.last4}
+                </Text>
+                <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)}</Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -281,5 +330,14 @@ const styles = StyleSheet.create({
   legendItem: {
     fontSize: 14,
     color: colors.text,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.muted,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
   },
 });
