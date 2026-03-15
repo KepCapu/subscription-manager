@@ -1,11 +1,13 @@
-﻿import React from 'react';
+import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import SectionCard from '../components/SectionCard';
+import SummaryMetric from '../components/SummaryMetric';
 import { colors } from '../theme/colors';
 
 const summaryCards = [
   { label: 'Active subscriptions', value: '12', accent: colors.primary },
-  { label: 'Next 7 days', value: 'EUR 24.97', accent: colors.success },
-  { label: 'Suspected recurring', value: '2', accent: colors.warning },
+  { label: 'Upcoming renewals', value: 'EUR 24.97', accent: colors.success },
+  { label: 'Possible recurring', value: '2', accent: colors.warning },
 ];
 
 const topSubscriptions = [
@@ -34,15 +36,16 @@ export default function OverviewScreen() {
 
         <View style={styles.summaryRow}>
           {summaryCards.map((item) => (
-            <View key={item.label} style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>{item.label}</Text>
-              <Text style={[styles.summaryValue, { color: item.accent }]}>{item.value}</Text>
-            </View>
+            <SummaryMetric
+              key={item.label}
+              label={item.label}
+              value={item.value}
+              valueColor={item.accent}
+            />
           ))}
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Top expensive subscriptions</Text>
+        <SectionCard title="Top expensive subscriptions">
           {topSubscriptions.map((item, index) => (
             <View
               key={item.name}
@@ -52,10 +55,9 @@ export default function OverviewScreen() {
               <Text style={styles.rowValue}>{item.price}</Text>
             </View>
           ))}
-        </View>
+        </SectionCard>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Yearly spending trend</Text>
+        <SectionCard title="Yearly spending trend">
           <View style={styles.chartPlaceholder}>
             <View style={styles.lineChart}>
               <View style={[styles.linePoint, { left: '6%', top: '72%' }]} />
@@ -76,10 +78,9 @@ export default function OverviewScreen() {
               <Text style={styles.monthLabel}>Nov</Text>
             </View>
           </View>
-        </View>
+        </SectionCard>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Spending distribution</Text>
+        <SectionCard title="Spending distribution">
           <View style={styles.donutWrap}>
             <View style={styles.donut} />
             <View style={styles.legend}>
@@ -90,10 +91,9 @@ export default function OverviewScreen() {
               <Text style={styles.legendItem}>Others - 32%</Text>
             </View>
           </View>
-        </View>
+        </SectionCard>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Linked cards</Text>
+        <SectionCard title="Linked cards">
           {linkedCards.map((item, index) => (
             <View
               key={item.name}
@@ -103,7 +103,7 @@ export default function OverviewScreen() {
               <Text style={styles.rowValue}>{item.value}</Text>
             </View>
           ))}
-        </View>
+        </SectionCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -151,37 +151,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: colors.muted,
-    marginBottom: 10,
-  },
-  summaryValue: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  sectionCard: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 14,
   },
   listRow: {
     flexDirection: 'row',

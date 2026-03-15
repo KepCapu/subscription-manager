@@ -1,5 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import SectionCard from '../components/SectionCard';
 import { colors } from '../theme/colors';
 
 const cards = [
@@ -40,8 +41,7 @@ export default function CardsScreen() {
           <Text style={styles.heroSubvalue}>12 active subscriptions</Text>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Linked cards</Text>
+        <SectionCard title="Linked cards">
           {cards.map((item, index) => (
             <View
               key={item.name}
@@ -54,10 +54,9 @@ export default function CardsScreen() {
               <Text style={styles.rowValue}>{item.monthly}</Text>
             </View>
           ))}
-        </View>
+        </SectionCard>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Yearly trend across cards</Text>
+        <SectionCard title="Yearly trend across cards">
           <View style={styles.chartPlaceholder}>
             <View style={styles.lineChart}>
               <View style={[styles.linePoint, { left: '8%', top: '72%' }]} />
@@ -77,10 +76,9 @@ export default function CardsScreen() {
               <Text style={styles.monthLabel}>Nov</Text>
             </View>
           </View>
-        </View>
+        </SectionCard>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Spending share by service</Text>
+        <SectionCard title="Spending share by service">
           <View style={styles.donutWrap}>
             <View style={styles.donut} />
             <View style={styles.legend}>
@@ -91,10 +89,9 @@ export default function CardsScreen() {
               <Text style={styles.legendItem}>Others - 32%</Text>
             </View>
           </View>
-        </View>
+        </SectionCard>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Connected services</Text>
+        <SectionCard title="Connected services">
           {linkedServices.map((service, index) => (
             <View
               key={service}
@@ -104,7 +101,7 @@ export default function CardsScreen() {
               <Text style={styles.rowSubtitle}>Detected recurring payment</Text>
             </View>
           ))}
-        </View>
+        </SectionCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -147,20 +144,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.muted,
     marginTop: 6,
-  },
-  sectionCard: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 14,
   },
   cardRow: {
     flexDirection: 'row',
