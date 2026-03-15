@@ -1,8 +1,14 @@
 ﻿import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { mockCards } from '../data/mockCards';
 import { mockSubscriptions } from '../data/mockSubscriptions';
+
+type Props = {
+  navigation: {
+    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  };
+};
 
 const totalMonthlyCost = mockCards
   .reduce((sum, item) => sum + item.monthlyTotal, 0)
@@ -12,7 +18,7 @@ const totalActiveSubscriptions = mockSubscriptions.length;
 
 const linkedServices = [...new Set(mockSubscriptions.map((item) => item.name))].slice(0, 5);
 
-export default function CardsScreen() {
+export default function CardsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -27,8 +33,14 @@ export default function CardsScreen() {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Linked cards</Text>
           {mockCards.map((item, index) => (
-            <View
+            <TouchableOpacity
               key={item.id}
+              onPress={() =>
+                navigation.navigate('CardDetails', {
+                  cardId: item.id,
+                })
+              }
+              activeOpacity={0.8}
               style={[styles.cardRow, index !== mockCards.length - 1 && styles.rowBorder]}
             >
               <View>
@@ -40,7 +52,7 @@ export default function CardsScreen() {
                 </Text>
               </View>
               <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)} / month</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 

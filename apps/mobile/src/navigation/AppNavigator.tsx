@@ -3,8 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import OverviewScreen from '../screens/OverviewScreen';
 import CardsScreen from '../screens/CardsScreen';
+import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import SubscriptionStack from './SubscriptionStack';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -28,7 +28,7 @@ export default function AppNavigator() {
       >
         <Tab.Screen name="Overview" component={OverviewScreen} />
         <Tab.Screen name="Cards" component={CardsScreen} />
-        <Tab.Screen name="Subscriptions" component={SubscriptionStack} />
+        <Tab.Screen name="Subscriptions" component={SubscriptionsScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>
