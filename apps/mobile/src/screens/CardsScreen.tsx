@@ -1,24 +1,58 @@
-﻿import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+﻿import React, { useEffect, useState } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
-import { mockCards } from '../data/mockCards';
-import { mockSubscriptions } from '../data/mockSubscriptions';
+import { fetchCards } from '../api/cards';
+import { fetchSubscriptions } from '../api/subscriptions';
+import { Card } from '../types/card';
+import { Subscription } from '../types/subscription';
 
-type Props = {
-  navigation: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
-  };
-};
+export default function CardsScreen() {
+  const [cards, setCards] = useState<Card[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const totalMonthlyCost = mockCards
-  .reduce((sum, item) => sum + item.monthlyTotal, 0)
-  .toFixed(2);
+  useEffect(() => {
+    let isMounted = true;
 
-const totalActiveSubscriptions = mockSubscriptions.length;
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
 
-const linkedServices = [...new Set(mockSubscriptions.map((item) => item.name))].slice(0, 5);
+        const [cardsData, subscriptionsData] = await Promise.all([
+          fetchCards(),
+          fetchSubscriptions(),
+        ]);
 
-export default function CardsScreen({ navigation }: Props) {
+        if (isMounted) {
+          setCards(cardsData);
+          setSubscriptions(subscriptionsData);
+        }
+      } catch (err) {
+        console.error('Cards load error:', err);
+
+        if (isMounted) {
+          setError('Could not load cards');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const totalMonthlyCost = cards.reduce((sum, item) => sum + item.monthlyTotal, 0).toFixed(2);
+  const totalActiveSubscriptions = subscriptions.length;
+  const linkedServices = [...new Set(subscriptions.map((item) => item.name))].slice(0, 5);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -26,34 +60,43 @@ export default function CardsScreen({ navigation }: Props) {
 
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Total subscriptions across all cards</Text>
-          <Text style={styles.heroValue}>EUR {totalMonthlyCost}</Text>
-          <Text style={styles.heroSubvalue}>{totalActiveSubscriptions} active subscriptions</Text>
+          <Text style={styles.heroValue}>
+            {loading ? 'Loading...' : 'EUR ' + totalMonthlyCost}
+          </Text>
+          <Text style={styles.heroSubvalue}>
+            {loading ? '-' : totalActiveSubscriptions + ' active subscriptions'}
+          </Text>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Linked cards</Text>
-          {mockCards.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() =>
-                navigation.navigate('CardDetails', {
-                  cardId: item.id,
-                })
-              }
-              activeOpacity={0.8}
-              style={[styles.cardRow, index !== mockCards.length - 1 && styles.rowBorder]}
-            >
-              <View>
-                <Text style={styles.rowTitle}>
-                  {item.name} ending {item.last4}
-                </Text>
-                <Text style={styles.rowSubtitle}>
-                  {item.activeSubscriptionsCount} subscriptions
+
+          {loading ? (
+            <Text style={styles.infoText}>Loading cards...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : cards.length === 0 ? (
+            <Text style={styles.infoText}>No cards found.</Text>
+          ) : (
+            cards.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.cardRow, index !== cards.length - 1 && styles.rowBorder]}
+              >
+                <View>
+                  <Text style={styles.rowTitle}>
+                    {item.name} ending {item.last4}
+                  </Text>
+                  <Text style={styles.rowSubtitle}>
+                    {item.activeSubscriptionsCount} subscriptions
+                  </Text>
+                </View>
+                <Text style={styles.rowValue}>
+                  {'EUR ' + item.monthlyTotal.toFixed(2) + ' / month'}
                 </Text>
               </View>
-              <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)} / month</Text>
-            </TouchableOpacity>
-          ))}
+            ))
+          )}
         </View>
 
         <View style={styles.sectionCard}>
@@ -95,15 +138,24 @@ export default function CardsScreen({ navigation }: Props) {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Connected services</Text>
-          {linkedServices.map((service, index) => (
-            <View
-              key={service}
-              style={[styles.listRow, index !== linkedServices.length - 1 && styles.rowBorder]}
-            >
-              <Text style={styles.rowTitle}>{service}</Text>
-              <Text style={styles.rowSubtitle}>Detected recurring payment</Text>
-            </View>
-          ))}
+
+          {loading ? (
+            <Text style={styles.infoText}>Loading services...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : linkedServices.length === 0 ? (
+            <Text style={styles.infoText}>No services found.</Text>
+          ) : (
+            linkedServices.map((service, index) => (
+              <View
+                key={service}
+                style={[styles.listRow, index !== linkedServices.length - 1 && styles.rowBorder]}
+              >
+                <Text style={styles.rowTitle}>{service}</Text>
+                <Text style={styles.rowSubtitle}>Detected recurring payment</Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -252,5 +304,15 @@ const styles = StyleSheet.create({
   legendItem: {
     fontSize: 14,
     color: colors.text,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.muted,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    paddingVertical: 10,
   },
 });

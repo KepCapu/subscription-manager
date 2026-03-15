@@ -1,20 +1,52 @@
-﻿import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+﻿import React, { useEffect, useState } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
-import { mockSubscriptions } from '../data/mockSubscriptions';
+import { fetchSubscriptions } from '../api/subscriptions';
+import { Subscription } from '../types/subscription';
 
-type Props = {
-  navigation: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
-  };
-};
+export default function SubscriptionsScreen() {
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const totalActiveSubscriptions = mockSubscriptions.length;
-const totalMonthlyCost = mockSubscriptions
-  .reduce((sum, item) => sum + item.monthlyPrice, 0)
-  .toFixed(2);
+  useEffect(() => {
+    let isMounted = true;
 
-export default function SubscriptionsScreen({ navigation }: Props) {
+    async function loadSubscriptions() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const items = await fetchSubscriptions();
+
+        if (isMounted) {
+          setSubscriptions(items);
+        }
+      } catch (err) {
+        console.error('Subscriptions load error:', err);
+
+        if (isMounted) {
+          setError('Could not load subscriptions');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadSubscriptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const totalActiveSubscriptions = subscriptions.length;
+  const totalMonthlyCost = subscriptions
+    .reduce((sum, item) => sum + item.monthlyPrice, 0)
+    .toFixed(2);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -23,43 +55,49 @@ export default function SubscriptionsScreen({ navigation }: Props) {
         <View style={styles.heroCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total active subscriptions</Text>
-            <Text style={styles.summaryValue}>{totalActiveSubscriptions}</Text>
+            <Text style={styles.summaryValue}>
+              {loading ? '-' : totalActiveSubscriptions}
+            </Text>
           </View>
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total monthly cost</Text>
-            <Text style={styles.summaryValue}>EUR {totalMonthlyCost}</Text>
+            <Text style={styles.summaryValue}>
+              {loading ? 'Loading...' : 'EUR ' + totalMonthlyCost}
+            </Text>
           </View>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>All subscriptions</Text>
 
-          {mockSubscriptions.map((subscription, index) => (
-            <TouchableOpacity
-              key={subscription.id}
-              onPress={() =>
-                navigation.navigate('SubscriptionDetails', {
-                  subscriptionId: subscription.id,
-                })
-              }
-              activeOpacity={0.8}
-              style={[
-                styles.subscriptionRow,
-                index !== mockSubscriptions.length - 1 && styles.rowBorder,
-              ]}
-            >
-              <View style={styles.leftCol}>
-                <Text style={styles.rowTitle}>{subscription.name}</Text>
-                <Text style={styles.rowSubtext}>{subscription.billingCardName}</Text>
-                <Text style={styles.rowStatus}>{subscription.status}</Text>
-              </View>
+          {loading ? (
+            <Text style={styles.infoText}>Loading subscriptions...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : subscriptions.length === 0 ? (
+            <Text style={styles.infoText}>No subscriptions found.</Text>
+          ) : (
+            subscriptions.map((subscription, index) => (
+              <View
+                key={subscription.id}
+                style={[
+                  styles.subscriptionRow,
+                  index !== subscriptions.length - 1 && styles.rowBorder,
+                ]}
+              >
+                <View style={styles.leftCol}>
+                  <Text style={styles.rowTitle}>{subscription.name}</Text>
+                  <Text style={styles.rowSubtext}>{subscription.billingCardName}</Text>
+                  <Text style={styles.rowStatus}>{subscription.status}</Text>
+                </View>
 
-              <Text style={styles.rowValue}>
-                EUR {subscription.monthlyPrice.toFixed(2)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={styles.rowValue}>
+                  {'EUR ' + subscription.monthlyPrice.toFixed(2)}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -152,5 +190,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     fontWeight: '600',
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.muted,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    paddingVertical: 10,
   },
 });
