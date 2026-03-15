@@ -1,33 +1,16 @@
-import React from 'react';
+﻿import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import SectionCard from '../components/SectionCard';
 import { colors } from '../theme/colors';
+import { mockCards } from '../data/mockCards';
+import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const cards = [
-  {
-    name: 'Visa ending 4421',
-    monthly: 'EUR 42.48 / month',
-    services: '7 subscriptions',
-  },
-  {
-    name: 'Mastercard ending 7710',
-    monthly: 'EUR 27.99 / month',
-    services: '4 subscriptions',
-  },
-  {
-    name: 'Revolut ending 0023',
-    monthly: 'EUR 19.03 / month',
-    services: '3 subscriptions',
-  },
-];
+const totalMonthlyCost = mockCards
+  .reduce((sum, item) => sum + item.monthlyTotal, 0)
+  .toFixed(2);
 
-const linkedServices = [
-  'Netflix',
-  'Spotify',
-  'Adobe',
-  'YouTube Premium',
-  'Apple',
-];
+const totalActiveSubscriptions = mockSubscriptions.length;
+
+const linkedServices = [...new Set(mockSubscriptions.map((item) => item.name))].slice(0, 5);
 
 export default function CardsScreen() {
   return (
@@ -37,26 +20,32 @@ export default function CardsScreen() {
 
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Total subscriptions across all cards</Text>
-          <Text style={styles.heroValue}>EUR 89.50</Text>
-          <Text style={styles.heroSubvalue}>12 active subscriptions</Text>
+          <Text style={styles.heroValue}>EUR {totalMonthlyCost}</Text>
+          <Text style={styles.heroSubvalue}>{totalActiveSubscriptions} active subscriptions</Text>
         </View>
 
-        <SectionCard title="Linked cards">
-          {cards.map((item, index) => (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Linked cards</Text>
+          {mockCards.map((item, index) => (
             <View
-              key={item.name}
-              style={[styles.cardRow, index !== cards.length - 1 && styles.rowBorder]}
+              key={item.id}
+              style={[styles.cardRow, index !== mockCards.length - 1 && styles.rowBorder]}
             >
               <View>
-                <Text style={styles.rowTitle}>{item.name}</Text>
-                <Text style={styles.rowSubtitle}>{item.services}</Text>
+                <Text style={styles.rowTitle}>
+                  {item.name} ending {item.last4}
+                </Text>
+                <Text style={styles.rowSubtitle}>
+                  {item.activeSubscriptionsCount} subscriptions
+                </Text>
               </View>
-              <Text style={styles.rowValue}>{item.monthly}</Text>
+              <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)} / month</Text>
             </View>
           ))}
-        </SectionCard>
+        </View>
 
-        <SectionCard title="Yearly trend across cards">
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Yearly trend across cards</Text>
           <View style={styles.chartPlaceholder}>
             <View style={styles.lineChart}>
               <View style={[styles.linePoint, { left: '8%', top: '72%' }]} />
@@ -76,9 +65,10 @@ export default function CardsScreen() {
               <Text style={styles.monthLabel}>Nov</Text>
             </View>
           </View>
-        </SectionCard>
+        </View>
 
-        <SectionCard title="Spending share by service">
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Spending share by service</Text>
           <View style={styles.donutWrap}>
             <View style={styles.donut} />
             <View style={styles.legend}>
@@ -89,9 +79,10 @@ export default function CardsScreen() {
               <Text style={styles.legendItem}>Others - 32%</Text>
             </View>
           </View>
-        </SectionCard>
+        </View>
 
-        <SectionCard title="Connected services">
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Connected services</Text>
           {linkedServices.map((service, index) => (
             <View
               key={service}
@@ -101,7 +92,7 @@ export default function CardsScreen() {
               <Text style={styles.rowSubtitle}>Detected recurring payment</Text>
             </View>
           ))}
-        </SectionCard>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -144,6 +135,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.muted,
     marginTop: 6,
+  },
+  sectionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 14,
   },
   cardRow: {
     flexDirection: 'row',

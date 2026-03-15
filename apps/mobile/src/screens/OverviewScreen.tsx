@@ -1,26 +1,25 @@
-import React from 'react';
+﻿import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import SectionCard from '../components/SectionCard';
-import SummaryMetric from '../components/SummaryMetric';
 import { colors } from '../theme/colors';
+import { mockSubscriptions } from '../data/mockSubscriptions';
+import { mockCards } from '../data/mockCards';
 
-const summaryCards = [
-  { label: 'Active subscriptions', value: '12', accent: colors.primary },
-  { label: 'Upcoming renewals', value: 'EUR 24.97', accent: colors.success },
-  { label: 'Possible recurring', value: '2', accent: colors.warning },
-];
+const totalMonthlyCost = mockSubscriptions
+  .reduce((sum, item) => sum + item.monthlyPrice, 0)
+  .toFixed(2);
 
-const topSubscriptions = [
-  { name: 'Netflix', price: 'EUR 15.99 / month' },
-  { name: 'Adobe', price: 'EUR 24.99 / month' },
-  { name: 'YouTube Premium', price: 'EUR 8.50 / month' },
-];
+const activeSubscriptionsCount = mockSubscriptions.length;
 
-const linkedCards = [
-  { name: 'Visa ending 4421', value: 'EUR 42.48' },
-  { name: 'Mastercard ending 7710', value: 'EUR 27.99' },
-  { name: 'Revolut ending 0023', value: 'EUR 19.03' },
-];
+const upcomingRenewalsValue = mockSubscriptions
+  .slice(0, 2)
+  .reduce((sum, item) => sum + item.monthlyPrice, 0)
+  .toFixed(2);
+
+const possibleRecurringCount = 2;
+
+const topSubscriptions = [...mockSubscriptions]
+  .sort((a, b) => b.monthlyPrice - a.monthlyPrice)
+  .slice(0, 3);
 
 export default function OverviewScreen() {
   return (
@@ -30,34 +29,48 @@ export default function OverviewScreen() {
 
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Total Monthly Subscriptions</Text>
-          <Text style={styles.heroValue}>EUR 89.50</Text>
+          <Text style={styles.heroValue}>EUR {totalMonthlyCost}</Text>
           <Text style={styles.heroSubvalue}>/ month</Text>
         </View>
 
         <View style={styles.summaryRow}>
-          {summaryCards.map((item) => (
-            <SummaryMetric
-              key={item.label}
-              label={item.label}
-              value={item.value}
-              valueColor={item.accent}
-            />
-          ))}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Active subscriptions</Text>
+            <Text style={[styles.summaryValue, { color: colors.primary }]}>
+              {activeSubscriptionsCount}
+            </Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Upcoming renewals</Text>
+            <Text style={[styles.summaryValue, { color: colors.success }]}>
+              EUR {upcomingRenewalsValue}
+            </Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Possible recurring</Text>
+            <Text style={[styles.summaryValue, { color: colors.warning }]}>
+              {possibleRecurringCount}
+            </Text>
+          </View>
         </View>
 
-        <SectionCard title="Top expensive subscriptions">
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Top expensive subscriptions</Text>
           {topSubscriptions.map((item, index) => (
             <View
-              key={item.name}
+              key={item.id}
               style={[styles.listRow, index !== topSubscriptions.length - 1 && styles.rowBorder]}
             >
               <Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.rowValue}>{item.price}</Text>
+              <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)} / month</Text>
             </View>
           ))}
-        </SectionCard>
+        </View>
 
-        <SectionCard title="Yearly spending trend">
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Yearly spending trend</Text>
           <View style={styles.chartPlaceholder}>
             <View style={styles.lineChart}>
               <View style={[styles.linePoint, { left: '6%', top: '72%' }]} />
@@ -78,9 +91,10 @@ export default function OverviewScreen() {
               <Text style={styles.monthLabel}>Nov</Text>
             </View>
           </View>
-        </SectionCard>
+        </View>
 
-        <SectionCard title="Spending distribution">
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Spending distribution</Text>
           <View style={styles.donutWrap}>
             <View style={styles.donut} />
             <View style={styles.legend}>
@@ -91,19 +105,22 @@ export default function OverviewScreen() {
               <Text style={styles.legendItem}>Others - 32%</Text>
             </View>
           </View>
-        </SectionCard>
+        </View>
 
-        <SectionCard title="Linked cards">
-          {linkedCards.map((item, index) => (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Linked cards</Text>
+          {mockCards.map((item, index) => (
             <View
-              key={item.name}
-              style={[styles.listRow, index !== linkedCards.length - 1 && styles.rowBorder]}
+              key={item.id}
+              style={[styles.listRow, index !== mockCards.length - 1 && styles.rowBorder]}
             >
-              <Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.rowValue}>{item.value}</Text>
+              <Text style={styles.rowTitle}>
+                {item.name} ending {item.last4}
+              </Text>
+              <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)}</Text>
             </View>
           ))}
-        </SectionCard>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -151,6 +168,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: colors.muted,
+    marginBottom: 10,
+  },
+  summaryValue: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  sectionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 14,
   },
   listRow: {
     flexDirection: 'row',
