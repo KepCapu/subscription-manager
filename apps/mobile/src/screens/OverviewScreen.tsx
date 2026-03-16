@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -69,6 +69,13 @@ export default function OverviewScreen() {
     .sort((a, b) => b.monthlyPrice - a.monthlyPrice)
     .slice(0, 3);
 
+  const upcomingRenewalItems = useMemo(() => {
+    return [...subscriptions]
+      .filter((item) => item.renewalDate)
+      .sort((a, b) => (a.renewalDate ?? '').localeCompare(b.renewalDate ?? ''))
+      .slice(0, 3);
+  }, [subscriptions]);
+
   function getNextRenewalForCard(card: Card): string {
     const billingCardName = `${card.name} ending ${card.last4}`;
 
@@ -121,6 +128,39 @@ export default function OverviewScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Upcoming renewals</Text>
+
+          {loading ? (
+            <Text style={styles.infoText}>Loading renewals...</Text>
+          ) : upcomingRenewalItems.length === 0 ? (
+            <Text style={styles.infoText}>No renewal dates found.</Text>
+          ) : (
+            upcomingRenewalItems.map((item, index) => (
+              <Pressable
+                key={item.id}
+                onPress={() =>
+                  navigation.navigate('Subscriptions', {
+                    screen: 'SubscriptionDetails',
+                    params: { subscriptionId: item.id },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.listRow,
+                  index !== upcomingRenewalItems.length - 1 && styles.rowBorder,
+                  pressed && styles.pressedRow,
+                ]}
+              >
+                <View>
+                  <Text style={styles.rowTitle}>{item.name}</Text>
+                  <Text style={styles.rowMeta}>{item.renewalDate ?? '—'}</Text>
+                </View>
+                <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)}</Text>
+              </Pressable>
+            ))
+          )}
+        </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Top expensive subscriptions</Text>
