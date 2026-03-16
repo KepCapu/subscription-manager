@@ -1,12 +1,8 @@
 ﻿import { apiGet } from './client';
 import { Card } from '../types/card';
-
-type CardsResponse = {
-  items: Card[];
-  total: number;
-};
+import { ListResponse } from '../types/listResponse';
 
 export async function fetchCards(): Promise<Card[]> {
-  const data = await apiGet<CardsResponse>('/cards');
+  const data = await apiGet<ListResponse<Card>>('/cards');
   return data.items;
 }
