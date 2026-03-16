@@ -58,7 +58,7 @@ export default function CardDetailsScreen({ route }: any) {
     return cardDetails.subscriptions.map((item, index) => ({
       id: `charge_${item.id}`,
       title: item.name,
-      date: `2026-03-${String(index + 1).padStart(2, '0')}`,
+      date: item.renewalDate ?? `2026-03-${String(index + 1).padStart(2, '0')}`,
       amount: item.monthlyPrice,
     }));
   }, [cardDetails]);
@@ -127,6 +127,7 @@ export default function CardDetailsScreen({ route }: any) {
                 <View>
                   <Text style={styles.rowTitle}>{item.name}</Text>
                   <Text style={styles.rowSubtext}>{item.status}</Text>
+                  <Text style={styles.rowMeta}>Next renewal: {item.renewalDate ?? '—'}</Text>
                 </View>
                 <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)}</Text>
               </View>
@@ -248,6 +249,11 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   rowSubtext: {
+    fontSize: 13,
+    color: colors.muted,
+    marginTop: 4,
+  },
+  rowMeta: {
     fontSize: 13,
     color: colors.muted,
     marginTop: 4,

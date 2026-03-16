@@ -17,6 +17,7 @@ type SubscriptionRow = {
   monthly_price: string;
   billing_card_name: string;
   status: string;
+  renewal_date: string | null;
 };
 
 function mapCardRow(row: CardRow): Card {
@@ -36,6 +37,7 @@ function mapSubscriptionRow(row: SubscriptionRow): Subscription {
     monthlyPrice: Number(row.monthly_price),
     billingCardName: row.billing_card_name,
     status: row.status,
+    renewalDate: row.renewal_date,
   };
 }
 
@@ -70,7 +72,7 @@ export async function getCardDetailsById(id: string): Promise<CardDetails | null
   const billingCardName = `${card.name} ending ${card.last4}`;
 
   const subscriptionsResult = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, status FROM subscriptions WHERE billing_card_name = $1 ORDER BY name ASC',
+    'SELECT id, name, monthly_price, billing_card_name, status, renewal_date::text AS renewal_date FROM subscriptions WHERE billing_card_name = $1 ORDER BY name ASC',
     [billingCardName]
   );
 
