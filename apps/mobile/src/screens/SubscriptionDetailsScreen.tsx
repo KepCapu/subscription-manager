@@ -1,10 +1,14 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fetchSubscriptionDetails } from '../api/subscriptions';
 import { colors } from '../theme/colors';
 import { SubscriptionDetails } from '../types/subscriptionDetails';
+import { SubscriptionStackParamList } from '../navigation/types';
 
-export default function SubscriptionDetailsScreen({ route }: any) {
+type Props = NativeStackScreenProps<SubscriptionStackParamList, 'SubscriptionDetails'>;
+
+export default function SubscriptionDetailsScreen({ route }: Props) {
   const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

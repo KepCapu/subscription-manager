@@ -1,0 +1,18 @@
+﻿import { NavigatorScreenParams } from '@react-navigation/native';
+
+export type CardsStackParamList = {
+  CardsList: undefined;
+  CardDetails: { cardId: string };
+};
+
+export type SubscriptionStackParamList = {
+  SubscriptionsList: undefined;
+  SubscriptionDetails: { subscriptionId: string };
+};
+
+export type RootTabParamList = {
+  Overview: undefined;
+  Cards: NavigatorScreenParams<CardsStackParamList>;
+  Subscriptions: NavigatorScreenParams<SubscriptionStackParamList>;
+  Profile: undefined;
+};

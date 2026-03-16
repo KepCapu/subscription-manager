@@ -3,8 +3,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import SubscriptionDetailsScreen from '../screens/SubscriptionDetailsScreen';
 import { colors } from '../theme/colors';
+import { SubscriptionStackParamList } from './types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<SubscriptionStackParamList>();
 
 export default function SubscriptionStack() {
   return (

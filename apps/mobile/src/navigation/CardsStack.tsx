@@ -3,8 +3,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CardsScreen from '../screens/CardsScreen';
 import CardDetailsScreen from '../screens/CardDetailsScreen';
 import { colors } from '../theme/colors';
+import { CardsStackParamList } from './types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<CardsStackParamList>();
 
 export default function CardsStack() {
   return (

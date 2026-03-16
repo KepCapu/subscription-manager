@@ -1,10 +1,14 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fetchCardDetails } from '../api/cards';
 import { colors } from '../theme/colors';
 import { CardDetails } from '../types/cardDetails';
+import { CardsStackParamList } from '../navigation/types';
 
-export default function CardDetailsScreen({ route }: any) {
+type Props = NativeStackScreenProps<CardsStackParamList, 'CardDetails'>;
+
+export default function CardDetailsScreen({ route }: Props) {
   const [cardDetails, setCardDetails] = useState<CardDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

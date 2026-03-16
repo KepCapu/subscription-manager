@@ -6,8 +6,9 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CardsStack from './CardsStack';
 import SubscriptionStack from './SubscriptionStack';
 import { colors } from '../theme/colors';
+import { RootTabParamList } from './types';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export default function AppNavigator() {
   return (
