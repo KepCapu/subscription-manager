@@ -69,6 +69,17 @@ export default function OverviewScreen() {
     .sort((a, b) => b.monthlyPrice - a.monthlyPrice)
     .slice(0, 3);
 
+  function getNextRenewalForCard(card: Card): string {
+    const billingCardName = `${card.name} ending ${card.last4}`;
+
+    const dates = subscriptions
+      .filter((item) => item.billingCardName === billingCardName && item.renewalDate)
+      .map((item) => item.renewalDate as string)
+      .sort((a, b) => a.localeCompare(b));
+
+    return dates[0] ?? '—';
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -202,9 +213,14 @@ export default function OverviewScreen() {
                   pressed && styles.pressedRow,
                 ]}
               >
-                <Text style={styles.rowTitle}>
-                  {item.name} ending {item.last4}
-                </Text>
+                <View>
+                  <Text style={styles.rowTitle}>
+                    {item.name} ending {item.last4}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    Next renewal: {getNextRenewalForCard(item)}
+                  </Text>
+                </View>
                 <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)}</Text>
               </Pressable>
             ))
@@ -306,6 +322,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+  },
+  rowMeta: {
+    fontSize: 13,
+    color: colors.muted,
+    marginTop: 4,
   },
   rowValue: {
     fontSize: 15,
