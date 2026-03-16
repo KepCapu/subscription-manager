@@ -59,6 +59,17 @@ export default function CardsScreen() {
   const totalActiveSubscriptions = subscriptions.length;
   const linkedServices = [...new Set(subscriptions.map((item) => item.name))].slice(0, 5);
 
+  function getNextRenewalForCard(card: Card): string {
+    const billingCardName = `${card.name} ending ${card.last4}`;
+
+    const dates = subscriptions
+      .filter((item) => item.billingCardName === billingCardName && item.renewalDate)
+      .map((item) => item.renewalDate as string)
+      .sort((a, b) => a.localeCompare(b));
+
+    return dates[0] ?? '—';
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -100,6 +111,9 @@ export default function CardsScreen() {
                   </Text>
                   <Text style={styles.rowSubtitle}>
                     {item.activeSubscriptionsCount} subscriptions
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    Next renewal: {getNextRenewalForCard(item)}
                   </Text>
                 </View>
                 <Text style={styles.rowValue}>
@@ -249,6 +263,11 @@ const styles = StyleSheet.create({
   },
   rowSubtitle: {
     fontSize: 14,
+    color: colors.muted,
+    marginTop: 4,
+  },
+  rowMeta: {
+    fontSize: 13,
     color: colors.muted,
     marginTop: 4,
   },
