@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import subscriptionsRouter from './routes/subscriptions';
 import cardsRouter from './routes/cards';
 import overviewRouter from './routes/overview';
+import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
 
@@ -20,6 +21,8 @@ app.get('/health', (_req, res) => {
 app.use('/subscriptions', subscriptionsRouter);
 app.use('/cards', cardsRouter);
 app.use('/overview', overviewRouter);
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log('API running on port ' + PORT);
