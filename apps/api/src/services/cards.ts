@@ -1,5 +1,7 @@
 ﻿import { dbPool } from '../db/pool';
 import { Card } from '../types/card';
+import { Subscription } from '../types/subscription';
+import { CardDetails } from '../types/cardDetails';
 
 type CardRow = {
   id: string;
@@ -9,6 +11,14 @@ type CardRow = {
   active_subscriptions_count: number;
 };
 
+type SubscriptionRow = {
+  id: string;
+  name: string;
+  monthly_price: string;
+  billing_card_name: string;
+  status: string;
+};
+
 function mapCardRow(row: CardRow): Card {
   return {
     id: row.id,
@@ -16,6 +26,16 @@ function mapCardRow(row: CardRow): Card {
     last4: row.last4,
     monthlyTotal: Number(row.monthly_total),
     activeSubscriptionsCount: row.active_subscriptions_count,
+  };
+}
+
+function mapSubscriptionRow(row: SubscriptionRow): Subscription {
+  return {
+    id: row.id,
+    name: row.name,
+    monthlyPrice: Number(row.monthly_price),
+    billingCardName: row.billing_card_name,
+    status: row.status,
   };
 }
 
@@ -38,4 +58,24 @@ export async function getCardById(id: string): Promise<Card | null> {
   }
 
   return mapCardRow(result.rows[0]);
+}
+
+export async function getCardDetailsById(id: string): Promise<CardDetails | null> {
+  const card = await getCardById(id);
+
+  if (!card) {
+    return null;
+  }
+
+  const billingCardName = `${card.name} ending ${card.last4}`;
+
+  const subscriptionsResult = await dbPool.query<SubscriptionRow>(
+    'SELECT id, name, monthly_price, billing_card_name, status FROM subscriptions WHERE billing_card_name = $1 ORDER BY name ASC',
+    [billingCardName]
+  );
+
+  return {
+    ...card,
+    subscriptions: subscriptionsResult.rows.map(mapSubscriptionRow),
+  };
 }
