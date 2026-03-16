@@ -97,6 +97,9 @@ export default function SubscriptionsScreen() {
                 <View style={styles.leftCol}>
                   <Text style={styles.rowTitle}>{subscription.name}</Text>
                   <Text style={styles.rowSubtext}>{subscription.billingCardName}</Text>
+                  <Text style={styles.rowMeta}>
+                    Next renewal: {subscription.renewalDate ?? '—'}
+                  </Text>
                   <Text style={styles.rowStatus}>{subscription.status}</Text>
                 </View>
 
@@ -188,6 +191,11 @@ const styles = StyleSheet.create({
   },
   rowSubtext: {
     fontSize: 14,
+    color: colors.muted,
+    marginTop: 4,
+  },
+  rowMeta: {
+    fontSize: 13,
     color: colors.muted,
     marginTop: 4,
   },
