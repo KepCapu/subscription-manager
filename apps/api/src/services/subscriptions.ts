@@ -1,5 +1,7 @@
 ﻿import { dbPool } from '../db/pool';
 import { Subscription } from '../types/subscription';
+import { Card } from '../types/card';
+import { SubscriptionDetails } from '../types/subscriptionDetails';
 
 type SubscriptionRow = {
   id: string;
@@ -9,6 +11,14 @@ type SubscriptionRow = {
   status: string;
 };
 
+type CardRow = {
+  id: string;
+  name: string;
+  last4: string;
+  monthly_total: string;
+  active_subscriptions_count: number;
+};
+
 function mapSubscriptionRow(row: SubscriptionRow): Subscription {
   return {
     id: row.id,
@@ -16,6 +26,16 @@ function mapSubscriptionRow(row: SubscriptionRow): Subscription {
     monthlyPrice: Number(row.monthly_price),
     billingCardName: row.billing_card_name,
     status: row.status,
+  };
+}
+
+function mapCardRow(row: CardRow): Card {
+  return {
+    id: row.id,
+    name: row.name,
+    last4: row.last4,
+    monthlyTotal: Number(row.monthly_total),
+    activeSubscriptionsCount: row.active_subscriptions_count,
   };
 }
 
@@ -38,4 +58,32 @@ export async function getSubscriptionById(id: string): Promise<Subscription | nu
   }
 
   return mapSubscriptionRow(result.rows[0]);
+}
+
+export async function getSubscriptionDetailsById(id: string): Promise<SubscriptionDetails | null> {
+  const subscriptionResult = await dbPool.query<SubscriptionRow>(
+    'SELECT id, name, monthly_price, billing_card_name, status FROM subscriptions WHERE id = $1 LIMIT 1',
+    [id]
+  );
+
+  if (subscriptionResult.rows.length === 0) {
+    return null;
+  }
+
+  const subscription = mapSubscriptionRow(subscriptionResult.rows[0]);
+
+  const cardResult = await dbPool.query<CardRow>(
+    `SELECT id, name, last4, monthly_total, active_subscriptions_count
+     FROM cards
+     WHERE (name || ' ending ' || last4) = $1
+     LIMIT 1`,
+    [subscription.billingCardName]
+  );
+
+  const billingCard = cardResult.rows.length > 0 ? mapCardRow(cardResult.rows[0]) : null;
+
+  return {
+    ...subscription,
+    billingCard,
+  };
 }
