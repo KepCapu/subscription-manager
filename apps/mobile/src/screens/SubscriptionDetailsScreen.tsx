@@ -96,6 +96,11 @@ export default function SubscriptionDetailsScreen({ route }: any) {
                 </Text>
               </View>
 
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Next renewal</Text>
+                <Text style={styles.infoValue}>{subscriptionDetails.renewalDate ?? '—'}</Text>
+              </View>
+
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Billing cycle</Text>
                 <Text style={styles.infoValue}>Monthly</Text>

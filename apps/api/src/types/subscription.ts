@@ -4,4 +4,5 @@
   monthlyPrice: number;
   billingCardName: string;
   status: string;
+  renewalDate: string | null;
 };

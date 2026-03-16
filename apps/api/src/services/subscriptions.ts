@@ -9,6 +9,7 @@ type SubscriptionRow = {
   monthly_price: string;
   billing_card_name: string;
   status: string;
+  renewal_date: string | null;
 };
 
 type CardRow = {
@@ -26,6 +27,7 @@ function mapSubscriptionRow(row: SubscriptionRow): Subscription {
     monthlyPrice: Number(row.monthly_price),
     billingCardName: row.billing_card_name,
     status: row.status,
+    renewalDate: row.renewal_date,
   };
 }
 
@@ -41,7 +43,7 @@ function mapCardRow(row: CardRow): Card {
 
 export async function getAllSubscriptions(): Promise<Subscription[]> {
   const result = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, status FROM subscriptions ORDER BY name ASC'
+    'SELECT id, name, monthly_price, billing_card_name, status, renewal_date::text AS renewal_date FROM subscriptions ORDER BY name ASC'
   );
 
   return result.rows.map(mapSubscriptionRow);
@@ -49,7 +51,7 @@ export async function getAllSubscriptions(): Promise<Subscription[]> {
 
 export async function getSubscriptionById(id: string): Promise<Subscription | null> {
   const result = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, status FROM subscriptions WHERE id = $1 LIMIT 1',
+    'SELECT id, name, monthly_price, billing_card_name, status, renewal_date::text AS renewal_date FROM subscriptions WHERE id = $1 LIMIT 1',
     [id]
   );
 
@@ -62,7 +64,7 @@ export async function getSubscriptionById(id: string): Promise<Subscription | nu
 
 export async function getSubscriptionDetailsById(id: string): Promise<SubscriptionDetails | null> {
   const subscriptionResult = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, status FROM subscriptions WHERE id = $1 LIMIT 1',
+    'SELECT id, name, monthly_price, billing_card_name, status, renewal_date::text AS renewal_date FROM subscriptions WHERE id = $1 LIMIT 1',
     [id]
   );
 
