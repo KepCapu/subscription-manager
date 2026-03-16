@@ -1,14 +1,18 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { fetchCards } from '../api/cards';
 import { fetchSubscriptions } from '../api/subscriptions';
 import { Card } from '../types/card';
 import { Subscription } from '../types/subscription';
+import { CardsStackParamList } from '../navigation/types';
+
+type CardsScreenNavigationProp = NativeStackNavigationProp<CardsStackParamList, 'CardsList'>;
 
 export default function CardsScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<CardsScreenNavigationProp>();
   const [cards, setCards] = useState<Card[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);

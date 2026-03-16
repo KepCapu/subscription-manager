@@ -1,12 +1,17 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { fetchSubscriptions } from '../api/subscriptions';
 import { Subscription } from '../types/subscription';
+import { SubscriptionStackParamList } from '../navigation/types';
+
+type SubscriptionsScreenNavigationProp =
+  NativeStackNavigationProp<SubscriptionStackParamList, 'SubscriptionsList'>;
 
 export default function SubscriptionsScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<SubscriptionsScreenNavigationProp>();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

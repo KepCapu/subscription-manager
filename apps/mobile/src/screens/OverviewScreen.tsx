@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme/colors';
 import { fetchOverview } from '../api/overview';
 import { fetchSubscriptions } from '../api/subscriptions';
@@ -8,9 +9,12 @@ import { fetchCards } from '../api/cards';
 import { OverviewData } from '../types/overview';
 import { Subscription } from '../types/subscription';
 import { Card } from '../types/card';
+import { RootTabParamList } from '../navigation/types';
+
+type OverviewScreenNavigationProp = BottomTabNavigationProp<RootTabParamList, 'Overview'>;
 
 export default function OverviewScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<OverviewScreenNavigationProp>();
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
