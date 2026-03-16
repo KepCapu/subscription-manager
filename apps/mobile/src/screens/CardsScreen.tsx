@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { fetchCards } from '../api/cards';
 import { fetchSubscriptions } from '../api/subscriptions';
@@ -7,6 +8,7 @@ import { Card } from '../types/card';
 import { Subscription } from '../types/subscription';
 
 export default function CardsScreen() {
+  const navigation = useNavigation<any>();
   const [cards, setCards] = useState<Card[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,9 +81,14 @@ export default function CardsScreen() {
             <Text style={styles.infoText}>No cards found.</Text>
           ) : (
             cards.map((item, index) => (
-              <View
+              <Pressable
                 key={item.id}
-                style={[styles.cardRow, index !== cards.length - 1 && styles.rowBorder]}
+                onPress={() => navigation.navigate('CardDetails', { cardId: item.id })}
+                style={({ pressed }) => [
+                  styles.cardRow,
+                  index !== cards.length - 1 && styles.rowBorder,
+                  pressed && styles.pressedRow,
+                ]}
               >
                 <View>
                   <Text style={styles.rowTitle}>
@@ -94,7 +101,7 @@ export default function CardsScreen() {
                 <Text style={styles.rowValue}>
                   {'EUR ' + item.monthlyTotal.toFixed(2) + ' / month'}
                 </Text>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -220,6 +227,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     gap: 16,
+  },
+  pressedRow: {
+    opacity: 0.7,
   },
   listRow: {
     paddingVertical: 14,

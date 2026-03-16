@@ -1,105 +1,162 @@
-﻿import React from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { fetchCardDetails } from '../api/cards';
 import { colors } from '../theme/colors';
-import { mockCards } from '../data/mockCards';
-import { mockSubscriptions } from '../data/mockSubscriptions';
+import { CardDetails } from '../types/cardDetails';
 
-type Props = {
-  route: {
-    params: {
-      cardId: string;
+export default function CardDetailsScreen({ route }: any) {
+  const [cardDetails, setCardDetails] = useState<CardDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await fetchCardDetails(route.params.cardId);
+
+        if (isMounted) {
+          setCardDetails(data);
+        }
+      } catch (err) {
+        console.error('Card details load error:', err);
+
+        if (isMounted) {
+          setError('Could not load card details');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
     };
-  };
-};
+  }, [route.params.cardId]);
 
-export default function CardDetailsScreen({ route }: Props) {
-  const card = mockCards.find((item) => item.id === route.params.cardId);
+  const cardLabel = useMemo(() => {
+    if (!cardDetails) {
+      return '';
+    }
 
-  if (!card) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.screenTitle}>Card not found</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+    return `${cardDetails.name} ending ${cardDetails.last4}`;
+  }, [cardDetails]);
 
-  const cardLabel = ${card.name} ending ;
+  const recentCharges = useMemo(() => {
+    if (!cardDetails) {
+      return [];
+    }
 
-  const subscriptionsForCard = mockSubscriptions.filter(
-    (item) => item.billingCardName === cardLabel
-  );
-
-  const recentCharges = subscriptionsForCard.map((item, index) => ({
-    id: charge_,
-    title: item.name,
-    date: 2026-03-0,
-    amount: item.monthlyPrice,
-  }));
+    return cardDetails.subscriptions.map((item, index) => ({
+      id: `charge_${item.id}`,
+      title: item.name,
+      date: `2026-03-${String(index + 1).padStart(2, '0')}`,
+      amount: item.monthlyPrice,
+    }));
+  }, [cardDetails]);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenTitle}>{card.name}</Text>
+        <Text style={styles.screenTitle}>{loading ? 'Loading...' : cardDetails?.name ?? 'Card details'}</Text>
 
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>{cardLabel}</Text>
-          <Text style={styles.heroValue}>EUR {card.monthlyTotal.toFixed(2)}</Text>
-          <Text style={styles.heroSubvalue}>{card.activeSubscriptionsCount} active subscriptions</Text>
+          <Text style={styles.heroLabel}>{loading ? 'Loading card...' : cardLabel}</Text>
+          <Text style={styles.heroValue}>
+            {loading ? 'Loading...' : `EUR ${cardDetails?.monthlyTotal.toFixed(2) ?? '0.00'}`}
+          </Text>
+          <Text style={styles.heroSubvalue}>
+            {loading
+              ? '-'
+              : `${cardDetails?.activeSubscriptionsCount ?? 0} active subscriptions`}
+          </Text>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Card info</Text>
 
-          <View style={[styles.infoRow, styles.rowBorder]}>
-            <Text style={styles.infoLabel}>Last 4 digits</Text>
-            <Text style={styles.infoValue}>{card.last4}</Text>
-          </View>
+          {loading ? (
+            <Text style={styles.infoText}>Loading card info...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : !cardDetails ? (
+            <Text style={styles.errorText}>Card not found</Text>
+          ) : (
+            <>
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Last 4 digits</Text>
+                <Text style={styles.infoValue}>{cardDetails.last4}</Text>
+              </View>
 
-          <View style={[styles.infoRow, styles.rowBorder]}>
-            <Text style={styles.infoLabel}>Monthly total</Text>
-            <Text style={styles.infoValue}>EUR {card.monthlyTotal.toFixed(2)}</Text>
-          </View>
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Monthly total</Text>
+                <Text style={styles.infoValue}>EUR {cardDetails.monthlyTotal.toFixed(2)}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Active subscriptions</Text>
-            <Text style={styles.infoValue}>{card.activeSubscriptionsCount}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Active subscriptions</Text>
+                <Text style={styles.infoValue}>{cardDetails.activeSubscriptionsCount}</Text>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Subscriptions on this card</Text>
 
-          {subscriptionsForCard.map((item, index) => (
-            <View
-              key={item.id}
-              style={[styles.listRow, index !== subscriptionsForCard.length - 1 && styles.rowBorder]}
-            >
-              <View>
-                <Text style={styles.rowTitle}>{item.name}</Text>
-                <Text style={styles.rowSubtext}>{item.status}</Text>
+          {loading ? (
+            <Text style={styles.infoText}>Loading subscriptions...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : !cardDetails || cardDetails.subscriptions.length === 0 ? (
+            <Text style={styles.infoText}>No subscriptions found.</Text>
+          ) : (
+            cardDetails.subscriptions.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.listRow, index !== cardDetails.subscriptions.length - 1 && styles.rowBorder]}
+              >
+                <View>
+                  <Text style={styles.rowTitle}>{item.name}</Text>
+                  <Text style={styles.rowSubtext}>{item.status}</Text>
+                </View>
+                <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)}</Text>
               </View>
-              <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Recent charges</Text>
 
-          {recentCharges.map((charge, index) => (
-            <View
-              key={charge.id}
-              style={[styles.listRow, index !== recentCharges.length - 1 && styles.rowBorder]}
-            >
-              <View>
-                <Text style={styles.rowTitle}>{charge.title}</Text>
-                <Text style={styles.rowSubtext}>{charge.date}</Text>
+          {loading ? (
+            <Text style={styles.infoText}>Loading recent charges...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : recentCharges.length === 0 ? (
+            <Text style={styles.infoText}>No recent charges found.</Text>
+          ) : (
+            recentCharges.map((charge, index) => (
+              <View
+                key={charge.id}
+                style={[styles.listRow, index !== recentCharges.length - 1 && styles.rowBorder]}
+              >
+                <View>
+                  <Text style={styles.rowTitle}>{charge.title}</Text>
+                  <Text style={styles.rowSubtext}>{charge.date}</Text>
+                </View>
+                <Text style={styles.rowValue}>EUR {charge.amount.toFixed(2)}</Text>
               </View>
-              <Text style={styles.rowValue}>EUR {charge.amount.toFixed(2)}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -199,5 +256,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     fontWeight: '600',
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.muted,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    paddingVertical: 10,
   },
 });

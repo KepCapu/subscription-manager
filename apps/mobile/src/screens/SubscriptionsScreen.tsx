@@ -1,10 +1,12 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { fetchSubscriptions } from '../api/subscriptions';
 import { Subscription } from '../types/subscription';
 
 export default function SubscriptionsScreen() {
+  const navigation = useNavigation<any>();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,11 +81,17 @@ export default function SubscriptionsScreen() {
             <Text style={styles.infoText}>No subscriptions found.</Text>
           ) : (
             subscriptions.map((subscription, index) => (
-              <View
+              <Pressable
                 key={subscription.id}
-                style={[
+                onPress={() =>
+                  navigation.navigate('SubscriptionDetails', {
+                    subscriptionId: subscription.id,
+                  })
+                }
+                style={({ pressed }) => [
                   styles.subscriptionRow,
                   index !== subscriptions.length - 1 && styles.rowBorder,
+                  pressed && styles.pressedRow,
                 ]}
               >
                 <View style={styles.leftCol}>
@@ -95,7 +103,7 @@ export default function SubscriptionsScreen() {
                 <Text style={styles.rowValue}>
                   {'EUR ' + subscription.monthlyPrice.toFixed(2)}
                 </Text>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -162,6 +170,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 14,
     gap: 16,
+  },
+  pressedRow: {
+    opacity: 0.7,
   },
   rowBorder: {
     borderBottomWidth: 1,

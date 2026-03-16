@@ -1,84 +1,169 @@
-﻿import React from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { fetchSubscriptionDetails } from '../api/subscriptions';
 import { colors } from '../theme/colors';
-import { mockSubscriptions } from '../data/mockSubscriptions';
+import { SubscriptionDetails } from '../types/subscriptionDetails';
 
-type Props = {
-  route: {
-    params: {
-      subscriptionId: string;
+export default function SubscriptionDetailsScreen({ route }: any) {
+  const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await fetchSubscriptionDetails(route.params.subscriptionId);
+
+        if (isMounted) {
+          setSubscriptionDetails(data);
+        }
+      } catch (err) {
+        console.error('Subscription details load error:', err);
+
+        if (isMounted) {
+          setError('Could not load subscription details');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
     };
-  };
-};
+  }, [route.params.subscriptionId]);
 
-export default function SubscriptionDetailsScreen({ route }: Props) {
-  const subscription = mockSubscriptions.find(
-    (item) => item.id === route.params.subscriptionId
-  );
+  const chargeHistory = useMemo(() => {
+    if (!subscriptionDetails) {
+      return [];
+    }
 
-  if (!subscription) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.screenTitle}>Subscription not found</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const mockChargeHistory = [
-    { id: 'c1', date: '2026-03-01', amount: subscription.monthlyPrice },
-    { id: 'c2', date: '2026-02-01', amount: subscription.monthlyPrice },
-    { id: 'c3', date: '2026-01-01', amount: subscription.monthlyPrice },
-  ];
+    return [
+      { id: 'c1', date: '2026-03-01', amount: subscriptionDetails.monthlyPrice },
+      { id: 'c2', date: '2026-02-01', amount: subscriptionDetails.monthlyPrice },
+      { id: 'c3', date: '2026-01-01', amount: subscriptionDetails.monthlyPrice },
+    ];
+  }, [subscriptionDetails]);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenTitle}>{subscription.name}</Text>
+        <Text style={styles.screenTitle}>
+          {loading ? 'Loading...' : subscriptionDetails?.name ?? 'Subscription details'}
+        </Text>
 
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Monthly cost</Text>
-          <Text style={styles.heroValue}>EUR {subscription.monthlyPrice.toFixed(2)}</Text>
-          <Text style={styles.heroSubvalue}>{subscription.status}</Text>
+          <Text style={styles.heroValue}>
+            {loading
+              ? 'Loading...'
+              : `EUR ${subscriptionDetails?.monthlyPrice.toFixed(2) ?? '0.00'}`}
+          </Text>
+          <Text style={styles.heroSubvalue}>
+            {loading ? '-' : subscriptionDetails?.status ?? '-'}
+          </Text>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Subscription info</Text>
 
-          <View style={[styles.infoRow, styles.rowBorder]}>
-            <Text style={styles.infoLabel}>Billing card</Text>
-            <Text style={styles.infoValue}>{subscription.billingCardName}</Text>
-          </View>
+          {loading ? (
+            <Text style={styles.infoText}>Loading subscription info...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : !subscriptionDetails ? (
+            <Text style={styles.errorText}>Subscription not found</Text>
+          ) : (
+            <>
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Billing card</Text>
+                <Text style={styles.infoValue}>{subscriptionDetails.billingCardName}</Text>
+              </View>
 
-          <View style={[styles.infoRow, styles.rowBorder]}>
-            <Text style={styles.infoLabel}>Status</Text>
-            <Text style={[styles.infoValue, { color: colors.success }]}>
-              {subscription.status}
-            </Text>
-          </View>
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Status</Text>
+                <Text style={[styles.infoValue, { color: colors.success }]}>
+                  {subscriptionDetails.status}
+                </Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Billing cycle</Text>
-            <Text style={styles.infoValue}>Monthly</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Billing cycle</Text>
+                <Text style={styles.infoValue}>Monthly</Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Linked card</Text>
+
+          {loading ? (
+            <Text style={styles.infoText}>Loading linked card...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : !subscriptionDetails ? (
+            <Text style={styles.errorText}>Subscription not found</Text>
+          ) : !subscriptionDetails.billingCard ? (
+            <Text style={styles.infoText}>No linked card found.</Text>
+          ) : (
+            <>
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Card</Text>
+                <Text style={styles.infoValue}>
+                  {subscriptionDetails.billingCard.name} ending {subscriptionDetails.billingCard.last4}
+                </Text>
+              </View>
+
+              <View style={[styles.infoRow, styles.rowBorder]}>
+                <Text style={styles.infoLabel}>Monthly total</Text>
+                <Text style={styles.infoValue}>
+                  EUR {subscriptionDetails.billingCard.monthlyTotal.toFixed(2)}
+                </Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Active subscriptions</Text>
+                <Text style={styles.infoValue}>
+                  {subscriptionDetails.billingCard.activeSubscriptionsCount}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Recent charges</Text>
 
-          {mockChargeHistory.map((charge, index) => (
-            <View
-              key={charge.id}
-              style={[styles.chargeRow, index !== mockChargeHistory.length - 1 && styles.rowBorder]}
-            >
-              <View>
-                <Text style={styles.chargeDate}>{charge.date}</Text>
-                <Text style={styles.chargeMeta}>Processed recurring charge</Text>
+          {loading ? (
+            <Text style={styles.infoText}>Loading recent charges...</Text>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : chargeHistory.length === 0 ? (
+            <Text style={styles.infoText}>No recent charges found.</Text>
+          ) : (
+            chargeHistory.map((charge, index) => (
+              <View
+                key={charge.id}
+                style={[styles.chargeRow, index !== chargeHistory.length - 1 && styles.rowBorder]}
+              >
+                <View>
+                  <Text style={styles.chargeDate}>{charge.date}</Text>
+                  <Text style={styles.chargeMeta}>Processed recurring charge</Text>
+                </View>
+                <Text style={styles.chargeAmount}>EUR {charge.amount.toFixed(2)}</Text>
               </View>
-              <Text style={styles.chargeAmount}>EUR {charge.amount.toFixed(2)}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -153,6 +238,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     fontWeight: '600',
+    flexShrink: 1,
+    textAlign: 'right',
   },
   chargeRow: {
     flexDirection: 'row',
@@ -179,5 +266,15 @@ const styles = StyleSheet.create({
   rowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.muted,
+    paddingVertical: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    paddingVertical: 10,
   },
 });
