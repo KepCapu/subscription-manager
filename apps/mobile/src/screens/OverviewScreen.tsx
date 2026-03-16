@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { fetchOverview } from '../api/overview';
 import { fetchSubscriptions } from '../api/subscriptions';
@@ -9,6 +10,7 @@ import { Subscription } from '../types/subscription';
 import { Card } from '../types/card';
 
 export default function OverviewScreen() {
+  const navigation = useNavigation<any>();
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
@@ -114,13 +116,23 @@ export default function OverviewScreen() {
             <Text style={styles.infoText}>No subscriptions found.</Text>
           ) : (
             topSubscriptions.map((item, index) => (
-              <View
+              <Pressable
                 key={item.id}
-                style={[styles.listRow, index !== topSubscriptions.length - 1 && styles.rowBorder]}
+                onPress={() =>
+                  navigation.navigate('Subscriptions', {
+                    screen: 'SubscriptionDetails',
+                    params: { subscriptionId: item.id },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.listRow,
+                  index !== topSubscriptions.length - 1 && styles.rowBorder,
+                  pressed && styles.pressedRow,
+                ]}
               >
                 <Text style={styles.rowTitle}>{item.name}</Text>
                 <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)} / month</Text>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -172,15 +184,25 @@ export default function OverviewScreen() {
             <Text style={styles.infoText}>No cards found.</Text>
           ) : (
             cards.map((item, index) => (
-              <View
+              <Pressable
                 key={item.id}
-                style={[styles.listRow, index !== cards.length - 1 && styles.rowBorder]}
+                onPress={() =>
+                  navigation.navigate('Cards', {
+                    screen: 'CardDetails',
+                    params: { cardId: item.id },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.listRow,
+                  index !== cards.length - 1 && styles.rowBorder,
+                  pressed && styles.pressedRow,
+                ]}
               >
                 <Text style={styles.rowTitle}>
                   {item.name} ending {item.last4}
                 </Text>
                 <Text style={styles.rowValue}>EUR {item.monthlyTotal.toFixed(2)}</Text>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -268,6 +290,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 14,
+  },
+  pressedRow: {
+    opacity: 0.7,
   },
   rowBorder: {
     borderBottomWidth: 1,
