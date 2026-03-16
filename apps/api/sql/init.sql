@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   renewal_date DATE
 );
 
+ALTER TABLE subscriptions
+ADD COLUMN IF NOT EXISTS renewal_date DATE;
+
 INSERT INTO cards (id, name, last4, monthly_total, active_subscriptions_count)
 VALUES
   ('card_visa_4421', 'Visa', '4421', 34.48, 3),
