@@ -5,6 +5,7 @@ import subscriptionsRouter from './routes/subscriptions';
 import cardsRouter from './routes/cards';
 import overviewRouter from './routes/overview';
 import { errorHandler } from './middleware/errorHandler';
+import { dbPool } from './db/pool';
 
 dotenv.config();
 
@@ -16,6 +17,26 @@ app.use(express.json());
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'subscription-manager-api' });
+});
+
+app.get('/health/db', async (_req, res) => {
+  try {
+    const result = await dbPool.query('SELECT NOW() as now');
+
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      now: result.rows[0].now,
+    });
+  } catch (error) {
+    console.error('DB health check failed:', error);
+
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      message: 'Could not connect to PostgreSQL',
+    });
+  }
 });
 
 app.use('/subscriptions', subscriptionsRouter);
