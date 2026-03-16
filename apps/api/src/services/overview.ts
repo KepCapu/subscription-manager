@@ -1,4 +1,4 @@
-﻿import { mockSubscriptions } from '../data/mockSubscriptions';
+﻿import { dbPool } from '../db/pool';
 
 export type OverviewMetrics = {
   totalMonthlyCost: number;
@@ -7,18 +7,28 @@ export type OverviewMetrics = {
   possibleRecurring: number;
 };
 
+type OverviewRow = {
+  total_monthly_cost: string;
+  active_subscriptions: string;
+};
+
 export async function getOverviewMetrics(): Promise<OverviewMetrics> {
-  const totalMonthlyCost = Number(
-    mockSubscriptions.reduce((sum, item) => sum + item.monthlyPrice, 0).toFixed(2)
+  const result = await dbPool.query<OverviewRow>(
+    `SELECT
+       COALESCE(SUM(monthly_price), 0)::text AS total_monthly_cost,
+       COUNT(*)::text AS active_subscriptions
+     FROM subscriptions
+     WHERE status = 'Active'`
   );
 
-  const activeSubscriptions = mockSubscriptions.length;
+  const row = result.rows[0];
+
+  const totalMonthlyCost = Number(Number(row.total_monthly_cost).toFixed(2));
+  const activeSubscriptions = Number(row.active_subscriptions);
 
   // TODO: replace this placeholder logic with real renewal-date based computation
-  // when subscriptions and charges are stored in PostgreSQL.
-  const upcomingRenewals = Number(
-    mockSubscriptions.slice(0, 2).reduce((sum, item) => sum + item.monthlyPrice, 0).toFixed(2)
-  );
+  // when renewal dates are stored in PostgreSQL.
+  const upcomingRenewals = 25.98;
 
   // TODO: replace this placeholder value with real recurring-detection logic
   // after recurring pattern analysis is implemented.
