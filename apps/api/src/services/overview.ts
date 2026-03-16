@@ -11,6 +11,7 @@ type OverviewRow = {
   total_monthly_cost: string;
   active_subscriptions: string;
   upcoming_renewals: string;
+  possible_recurring: string;
 };
 
 export async function getOverviewMetrics(): Promise<OverviewMetrics> {
@@ -26,24 +27,20 @@ export async function getOverviewMetrics(): Promise<OverviewMetrics> {
              AND renewal_date <= CURRENT_DATE + INTERVAL '7 days'
          ),
          0
-       )::text AS upcoming_renewals
+       )::text AS upcoming_renewals,
+       COUNT(*) FILTER (
+         WHERE status = 'Active'
+           AND renewal_date IS NOT NULL
+       )::text AS possible_recurring
      FROM subscriptions`
   );
 
   const row = result.rows[0];
 
-  const totalMonthlyCost = Number(Number(row.total_monthly_cost).toFixed(2));
-  const activeSubscriptions = Number(row.active_subscriptions);
-  const upcomingRenewals = Number(Number(row.upcoming_renewals).toFixed(2));
-
-  // TODO: replace this placeholder value with real recurring-detection logic
-  // after recurring pattern analysis is implemented.
-  const possibleRecurring = 2;
-
   return {
-    totalMonthlyCost,
-    activeSubscriptions,
-    upcomingRenewals,
-    possibleRecurring,
+    totalMonthlyCost: Number(Number(row.total_monthly_cost).toFixed(2)),
+    activeSubscriptions: Number(row.active_subscriptions),
+    upcomingRenewals: Number(Number(row.upcoming_renewals).toFixed(2)),
+    possibleRecurring: Number(row.possible_recurring),
   };
 }
