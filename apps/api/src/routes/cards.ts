@@ -4,11 +4,11 @@ import { getAllCards } from '../services/cards';
 const router = Router();
 
 router.get('/', async (_req, res) => {
-  const cards = await getAllCards();
+  const items = await getAllCards();
 
   res.json({
-    items: cards,
-    total: cards.length,
+    items,
+    total: items.length,
   });
 });
 

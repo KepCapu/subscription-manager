@@ -4,11 +4,11 @@ import { getAllSubscriptions } from '../services/subscriptions';
 const router = Router();
 
 router.get('/', async (_req, res) => {
-  const subscriptions = await getAllSubscriptions();
+  const items = await getAllSubscriptions();
 
   res.json({
-    items: subscriptions,
-    total: subscriptions.length,
+    items,
+    total: items.length,
   });
 });
 
