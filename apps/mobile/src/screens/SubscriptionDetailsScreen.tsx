@@ -1,16 +1,17 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fetchSubscriptionDetails } from '../api/subscriptions';
+import { deleteSubscription, fetchSubscriptionDetails } from '../api/subscriptions';
 import { colors } from '../theme/colors';
 import { SubscriptionDetails } from '../types/subscriptionDetails';
 import { SubscriptionStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<SubscriptionStackParamList, 'SubscriptionDetails'>;
 
-export default function SubscriptionDetailsScreen({ route }: Props) {
+export default function SubscriptionDetailsScreen({ route, navigation }: Props) {
   const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,65 @@ export default function SubscriptionDetailsScreen({ route }: Props) {
       { id: 'c3', date: '2026-01-01', amount: subscriptionDetails.monthlyPrice },
     ];
   }, [subscriptionDetails]);
+
+  async function handleDelete() {
+    if (!subscriptionDetails || deleting) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await deleteSubscription(subscriptionDetails.id);
+      navigation.goBack();
+    } catch (err) {
+      console.error('Delete subscription error:', err);
+
+      if (Platform.OS === 'web') {
+        if (typeof globalThis.alert === 'function') {
+          globalThis.alert('Could not delete subscription');
+        }
+      } else {
+        Alert.alert('Error', 'Could not delete subscription');
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDelete() {
+    if (!subscriptionDetails || deleting) {
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const confirmed =
+        typeof globalThis.confirm === 'function'
+          ? globalThis.confirm(`Delete ${subscriptionDetails.name}?`)
+          : true;
+
+      if (!confirmed) {
+        return;
+      }
+
+      void handleDelete();
+      return;
+    }
+
+    Alert.alert(
+      'Delete subscription',
+      `Delete ${subscriptionDetails.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void handleDelete();
+          },
+        },
+      ]
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -174,6 +234,20 @@ export default function SubscriptionDetailsScreen({ route }: Props) {
             ))
           )}
         </View>
+
+        <Pressable
+          onPress={confirmDelete}
+          disabled={loading || deleting || !subscriptionDetails}
+          style={({ pressed }) => [
+            styles.deleteButton,
+            (loading || deleting || !subscriptionDetails) && styles.deleteButtonDisabled,
+            pressed && !loading && !deleting && subscriptionDetails && styles.deleteButtonPressed,
+          ]}
+        >
+          <Text style={styles.deleteButtonText}>
+            {deleting ? 'Deleting...' : 'Delete subscription'}
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -285,5 +359,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#DC2626',
     paddingVertical: 10,
+  },
+  deleteButton: {
+    backgroundColor: '#DC2626',
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
+  },
+  deleteButtonPressed: {
+    opacity: 0.8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
