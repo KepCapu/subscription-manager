@@ -21,6 +21,19 @@ type CardRow = {
   active_subscriptions_count: number;
 };
 
+export type CreateSubscriptionInput = {
+  id: string;
+  name: string;
+  monthlyPrice: number;
+  cardId: string;
+  status: string;
+  renewalDate: string | null;
+};
+
+export type CreateSubscriptionResult =
+  | { ok: true; item: Subscription }
+  | { ok: false; reason: 'CARD_NOT_FOUND' | 'SUBSCRIPTION_ID_ALREADY_EXISTS' };
+
 function mapSubscriptionRow(row: SubscriptionRow): Subscription {
   return {
     id: row.id,
@@ -108,4 +121,85 @@ export async function getSubscriptionDetailsById(id: string): Promise<Subscripti
     ...subscription,
     billingCard,
   };
+}
+
+export async function createSubscription(
+  input: CreateSubscriptionInput
+): Promise<CreateSubscriptionResult> {
+  await dbPool.query('BEGIN');
+
+  try {
+    const existingSubscriptionResult = await dbPool.query<{ id: string }>(
+      'SELECT id FROM subscriptions WHERE id = $1 LIMIT 1',
+      [input.id]
+    );
+
+    if (existingSubscriptionResult.rows.length > 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'SUBSCRIPTION_ID_ALREADY_EXISTS' };
+    }
+
+    const cardResult = await dbPool.query<CardRow>(
+      `SELECT id, name, last4, monthly_total, active_subscriptions_count
+       FROM cards
+       WHERE id = $1
+       LIMIT 1`,
+      [input.cardId]
+    );
+
+    if (cardResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'CARD_NOT_FOUND' };
+    }
+
+    const card = cardResult.rows[0];
+    const billingCardName = `${card.name} ending ${card.last4}`;
+
+    await dbPool.query(
+      `INSERT INTO subscriptions (
+        id,
+        name,
+        monthly_price,
+        billing_card_name,
+        card_id,
+        status,
+        renewal_date
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7::date)`,
+      [
+        input.id,
+        input.name,
+        input.monthlyPrice,
+        billingCardName,
+        input.cardId,
+        input.status,
+        input.renewalDate,
+      ]
+    );
+
+    await dbPool.query(
+      `UPDATE cards
+       SET monthly_total = monthly_total + $1,
+           active_subscriptions_count = active_subscriptions_count + 1
+       WHERE id = $2`,
+      [input.monthlyPrice, input.cardId]
+    );
+
+    await dbPool.query('COMMIT');
+
+    const createdSubscription = await getSubscriptionById(input.id);
+
+    if (!createdSubscription) {
+      throw new Error('Created subscription could not be loaded');
+    }
+
+    return { ok: true, item: createdSubscription };
+  } catch (error) {
+    try {
+      await dbPool.query('ROLLBACK');
+    } catch {
+      // no-op
+    }
+
+    throw error;
+  }
 }
