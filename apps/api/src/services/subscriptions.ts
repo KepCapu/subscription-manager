@@ -21,6 +21,16 @@ type CardRow = {
   active_subscriptions_count: number;
 };
 
+type ExistingSubscriptionRow = {
+  id: string;
+  name: string;
+  monthly_price: string;
+  billing_card_name: string;
+  card_id: string;
+  status: string;
+  renewal_date: string | null;
+};
+
 export type CreateSubscriptionInput = {
   id: string;
   name: string;
@@ -33,6 +43,18 @@ export type CreateSubscriptionInput = {
 export type CreateSubscriptionResult =
   | { ok: true; item: Subscription }
   | { ok: false; reason: 'CARD_NOT_FOUND' | 'SUBSCRIPTION_ID_ALREADY_EXISTS' };
+
+export type UpdateSubscriptionInput = {
+  name?: string;
+  monthlyPrice?: number;
+  cardId?: string;
+  status?: string;
+  renewalDate?: string | null;
+};
+
+export type UpdateSubscriptionResult =
+  | { ok: true; item: Subscription }
+  | { ok: false; reason: 'SUBSCRIPTION_NOT_FOUND' | 'CARD_NOT_FOUND' };
 
 function mapSubscriptionRow(row: SubscriptionRow): Subscription {
   return {
@@ -193,6 +215,121 @@ export async function createSubscription(
     }
 
     return { ok: true, item: createdSubscription };
+  } catch (error) {
+    try {
+      await dbPool.query('ROLLBACK');
+    } catch {
+      // no-op
+    }
+
+    throw error;
+  }
+}
+
+export async function updateSubscription(
+  id: string,
+  input: UpdateSubscriptionInput
+): Promise<UpdateSubscriptionResult> {
+  await dbPool.query('BEGIN');
+
+  try {
+    const existingResult = await dbPool.query<ExistingSubscriptionRow>(
+      `SELECT id, name, monthly_price, billing_card_name, card_id, status, renewal_date::text AS renewal_date
+       FROM subscriptions
+       WHERE id = $1
+       LIMIT 1`,
+      [id]
+    );
+
+    if (existingResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'SUBSCRIPTION_NOT_FOUND' };
+    }
+
+    const existing = existingResult.rows[0];
+
+    const nextName = input.name ?? existing.name;
+    const nextMonthlyPrice = input.monthlyPrice ?? Number(existing.monthly_price);
+    const nextCardId = input.cardId ?? existing.card_id;
+    const nextStatus = input.status ?? existing.status;
+    const nextRenewalDate =
+      input.renewalDate !== undefined ? input.renewalDate : existing.renewal_date;
+
+    const targetCardResult = await dbPool.query<CardRow>(
+      `SELECT id, name, last4, monthly_total, active_subscriptions_count
+       FROM cards
+       WHERE id = $1
+       LIMIT 1`,
+      [nextCardId]
+    );
+
+    if (targetCardResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'CARD_NOT_FOUND' };
+    }
+
+    const targetCard = targetCardResult.rows[0];
+    const nextBillingCardName = `${targetCard.name} ending ${targetCard.last4}`;
+    const previousMonthlyPrice = Number(existing.monthly_price);
+
+    await dbPool.query(
+      `UPDATE subscriptions
+       SET name = $2,
+           monthly_price = $3,
+           billing_card_name = $4,
+           card_id = $5,
+           status = $6,
+           renewal_date = $7::date
+       WHERE id = $1`,
+      [
+        id,
+        nextName,
+        nextMonthlyPrice,
+        nextBillingCardName,
+        nextCardId,
+        nextStatus,
+        nextRenewalDate,
+      ]
+    );
+
+    if (existing.card_id === nextCardId) {
+      const monthlyDelta = nextMonthlyPrice - previousMonthlyPrice;
+
+      if (monthlyDelta !== 0) {
+        await dbPool.query(
+          `UPDATE cards
+           SET monthly_total = monthly_total + $1
+           WHERE id = $2`,
+          [monthlyDelta, nextCardId]
+        );
+      }
+    } else {
+      await dbPool.query(
+        `UPDATE cards
+         SET monthly_total = monthly_total - $1,
+             active_subscriptions_count = active_subscriptions_count - 1
+         WHERE id = $2`,
+        [previousMonthlyPrice, existing.card_id]
+      );
+
+      await dbPool.query(
+        `UPDATE cards
+         SET monthly_total = monthly_total + $1,
+             active_subscriptions_count = active_subscriptions_count + 1
+         WHERE id = $2`,
+        [nextMonthlyPrice, nextCardId]
+      );
+    }
+
+    await dbPool.query('COMMIT');
+
+    const updatedSubscription = await getSubscriptionById(id);
+
+    if (!updatedSubscription) {
+      throw new Error('Updated subscription could not be loaded');
+    }
+
+    return { ok: true, item: updatedSubscription };
   } catch (error) {
     try {
       await dbPool.query('ROLLBACK');
