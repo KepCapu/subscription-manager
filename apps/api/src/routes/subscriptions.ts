@@ -1,6 +1,7 @@
 ﻿import { Router } from 'express';
 import {
   createSubscription,
+  deleteSubscription,
   getAllSubscriptions,
   getSubscriptionById,
   getSubscriptionDetailsById,
@@ -231,6 +232,26 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     res.json(result.item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const result = await deleteSubscription(req.params.id);
+
+    if (!result.ok) {
+      const errorResponse: ApiErrorResponse = {
+        error: 'Subscription not found',
+        code: 'SUBSCRIPTION_NOT_FOUND',
+      };
+
+      res.status(404).json(errorResponse);
+      return;
+    }
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

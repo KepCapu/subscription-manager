@@ -56,6 +56,10 @@ export type UpdateSubscriptionResult =
   | { ok: true; item: Subscription }
   | { ok: false; reason: 'SUBSCRIPTION_NOT_FOUND' | 'CARD_NOT_FOUND' };
 
+export type DeleteSubscriptionResult =
+  | { ok: true }
+  | { ok: false; reason: 'SUBSCRIPTION_NOT_FOUND' };
+
 function mapSubscriptionRow(row: SubscriptionRow): Subscription {
   return {
     id: row.id,
@@ -330,6 +334,54 @@ export async function updateSubscription(
     }
 
     return { ok: true, item: updatedSubscription };
+  } catch (error) {
+    try {
+      await dbPool.query('ROLLBACK');
+    } catch {
+      // no-op
+    }
+
+    throw error;
+  }
+}
+
+export async function deleteSubscription(id: string): Promise<DeleteSubscriptionResult> {
+  await dbPool.query('BEGIN');
+
+  try {
+    const existingResult = await dbPool.query<ExistingSubscriptionRow>(
+      `SELECT id, name, monthly_price, billing_card_name, card_id, status, renewal_date::text AS renewal_date
+       FROM subscriptions
+       WHERE id = $1
+       LIMIT 1`,
+      [id]
+    );
+
+    if (existingResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'SUBSCRIPTION_NOT_FOUND' };
+    }
+
+    const existing = existingResult.rows[0];
+    const previousMonthlyPrice = Number(existing.monthly_price);
+
+    await dbPool.query(
+      `DELETE FROM subscriptions
+       WHERE id = $1`,
+      [id]
+    );
+
+    await dbPool.query(
+      `UPDATE cards
+       SET monthly_total = monthly_total - $1,
+           active_subscriptions_count = active_subscriptions_count - 1
+       WHERE id = $2`,
+      [previousMonthlyPrice, existing.card_id]
+    );
+
+    await dbPool.query('COMMIT');
+
+    return { ok: true };
   } catch (error) {
     try {
       await dbPool.query('ROLLBACK');
