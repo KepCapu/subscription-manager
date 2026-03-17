@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "node scripts/migrate.cjs",
-    "seed": "node scripts/seed.cjs"
+    "seed": "node scripts/seed.cjs",
+    "smoke": "node scripts/smoke-api.cjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
