@@ -60,10 +60,8 @@ export default function CardsScreen() {
   const linkedServices = [...new Set(subscriptions.map((item) => item.name))].slice(0, 5);
 
   function getNextRenewalForCard(card: Card): string {
-    const billingCardName = `${card.name} ending ${card.last4}`;
-
     const dates = subscriptions
-      .filter((item) => item.billingCardName === billingCardName && item.renewalDate)
+      .filter((item) => item.cardId === card.id && item.renewalDate)
       .map((item) => item.renewalDate as string)
       .sort((a, b) => a.localeCompare(b));
 

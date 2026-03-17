@@ -77,10 +77,8 @@ export default function OverviewScreen() {
   }, [subscriptions]);
 
   function getNextRenewalForCard(card: Card): string {
-    const billingCardName = `${card.name} ending ${card.last4}`;
-
     const dates = subscriptions
-      .filter((item) => item.billingCardName === billingCardName && item.renewalDate)
+      .filter((item) => item.cardId === card.id && item.renewalDate)
       .map((item) => item.renewalDate as string)
       .sort((a, b) => a.localeCompare(b));
 
