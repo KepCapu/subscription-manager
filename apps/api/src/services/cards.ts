@@ -72,7 +72,18 @@ export async function getCardDetailsById(id: string): Promise<CardDetails | null
   }
 
   const subscriptionsResult = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, card_id, status, renewal_date::text AS renewal_date FROM subscriptions WHERE card_id = $1 ORDER BY name ASC',
+    `SELECT
+       s.id,
+       s.name,
+       s.monthly_price,
+       COALESCE(c.name || ' ending ' || c.last4, s.billing_card_name) AS billing_card_name,
+       s.card_id,
+       s.status,
+       s.renewal_date::text AS renewal_date
+     FROM subscriptions s
+     LEFT JOIN cards c ON c.id = s.card_id
+     WHERE s.card_id = $1
+     ORDER BY s.name ASC`,
     [card.id]
   );
 
