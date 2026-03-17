@@ -43,9 +43,23 @@ function mapCardRow(row: CardRow): Card {
   };
 }
 
+const subscriptionSelect = `
+  SELECT
+    s.id,
+    s.name,
+    s.monthly_price,
+    COALESCE(c.name || ' ending ' || c.last4, s.billing_card_name) AS billing_card_name,
+    s.card_id,
+    s.status,
+    s.renewal_date::text AS renewal_date
+  FROM subscriptions s
+  LEFT JOIN cards c ON c.id = s.card_id
+`;
+
 export async function getAllSubscriptions(): Promise<Subscription[]> {
   const result = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, card_id, status, renewal_date::text AS renewal_date FROM subscriptions ORDER BY name ASC'
+    `${subscriptionSelect}
+     ORDER BY s.name ASC`
   );
 
   return result.rows.map(mapSubscriptionRow);
@@ -53,7 +67,9 @@ export async function getAllSubscriptions(): Promise<Subscription[]> {
 
 export async function getSubscriptionById(id: string): Promise<Subscription | null> {
   const result = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, card_id, status, renewal_date::text AS renewal_date FROM subscriptions WHERE id = $1 LIMIT 1',
+    `${subscriptionSelect}
+     WHERE s.id = $1
+     LIMIT 1`,
     [id]
   );
 
@@ -66,7 +82,9 @@ export async function getSubscriptionById(id: string): Promise<Subscription | nu
 
 export async function getSubscriptionDetailsById(id: string): Promise<SubscriptionDetails | null> {
   const subscriptionResult = await dbPool.query<SubscriptionRow>(
-    'SELECT id, name, monthly_price, billing_card_name, card_id, status, renewal_date::text AS renewal_date FROM subscriptions WHERE id = $1 LIMIT 1',
+    `${subscriptionSelect}
+     WHERE s.id = $1
+     LIMIT 1`,
     [id]
   );
 
