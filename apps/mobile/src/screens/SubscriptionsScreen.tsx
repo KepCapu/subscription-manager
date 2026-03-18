@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -59,6 +59,13 @@ export default function SubscriptionsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.screenTitle}>Subscriptions</Text>
 
+        <Pressable
+          onPress={() => navigation.navigate('AddSubscription')}
+          style={({ pressed }) => [styles.addButton, pressed && styles.pressedButton]}
+        >
+          <Text style={styles.addButtonText}>Add subscription</Text>
+        </Pressable>
+
         <View style={styles.heroCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total active subscriptions</Text>
@@ -103,7 +110,7 @@ export default function SubscriptionsScreen() {
                   <Text style={styles.rowTitle}>{subscription.name}</Text>
                   <Text style={styles.rowSubtext}>{subscription.billingCardName}</Text>
                   <Text style={styles.rowMeta}>
-                    Next renewal: {subscription.renewalDate ?? '—'}
+                    Next renewal: {subscription.renewalDate ?? '�'}
                   </Text>
                   <Text style={styles.rowStatus}>{subscription.status}</Text>
                 </View>
@@ -134,6 +141,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 16,
+  },
+  addButton: {
+    backgroundColor: colors.text,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.background,
+  },
+  pressedButton: {
+    opacity: 0.8,
   },
   heroCard: {
     backgroundColor: colors.card,

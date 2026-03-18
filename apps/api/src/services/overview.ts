@@ -1,4 +1,4 @@
-﻿import { dbPool } from '../db/pool';
+import { dbPool } from '../db/pool';
 
 export type OverviewMetrics = {
   totalMonthlyCost: number;
@@ -17,11 +17,11 @@ type OverviewRow = {
 export async function getOverviewMetrics(): Promise<OverviewMetrics> {
   const result = await dbPool.query<OverviewRow>(
     `SELECT
-       COALESCE(SUM(monthly_price) FILTER (WHERE status = 'Active'), 0)::text AS total_monthly_cost,
-       COUNT(*) FILTER (WHERE status = 'Active')::text AS active_subscriptions,
+       COALESCE(SUM(monthly_price) FILTER (WHERE LOWER(status) = 'active'), 0)::text AS total_monthly_cost,
+       COUNT(*) FILTER (WHERE LOWER(status) = 'active')::text AS active_subscriptions,
        COALESCE(
          SUM(monthly_price) FILTER (
-           WHERE status = 'Active'
+           WHERE LOWER(status) = 'active'
              AND renewal_date IS NOT NULL
              AND renewal_date >= CURRENT_DATE
              AND renewal_date <= CURRENT_DATE + INTERVAL '7 days'
@@ -29,7 +29,7 @@ export async function getOverviewMetrics(): Promise<OverviewMetrics> {
          0
        )::text AS upcoming_renewals,
        COUNT(*) FILTER (
-         WHERE status = 'Active'
+         WHERE LOWER(status) = 'active'
            AND renewal_date IS NOT NULL
        )::text AS possible_recurring
      FROM subscriptions`

@@ -7,6 +7,7 @@ export type CardsStackParamList = {
 
 export type SubscriptionStackParamList = {
   SubscriptionsList: undefined;
+  AddSubscription: undefined;
   SubscriptionDetails: { subscriptionId: string };
 };
 

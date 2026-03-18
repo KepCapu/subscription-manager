@@ -1,6 +1,6 @@
-ï»¿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme/colors';
 import { fetchOverview } from '../api/overview';
@@ -21,44 +21,46 @@ export default function OverviewScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    async function loadOverviewData() {
-      try {
-        setLoading(true);
-        setError(null);
+      async function loadOverviewData() {
+        try {
+          setLoading(true);
+          setError(null);
 
-        const [overviewData, subscriptionsData, cardsData] = await Promise.all([
-          fetchOverview(),
-          fetchSubscriptions(),
-          fetchCards(),
-        ]);
+          const [overviewData, subscriptionsData, cardsData] = await Promise.all([
+            fetchOverview(),
+            fetchSubscriptions(),
+            fetchCards(),
+          ]);
 
-        if (isMounted) {
-          setOverview(overviewData);
-          setSubscriptions(subscriptionsData);
-          setCards(cardsData);
-        }
-      } catch (err) {
-        console.error('Overview load error:', err);
+          if (isMounted) {
+            setOverview(overviewData);
+            setSubscriptions(subscriptionsData);
+            setCards(cardsData);
+          }
+        } catch (err) {
+          console.error('Overview load error:', err);
 
-        if (isMounted) {
-          setError('Could not load overview');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+          if (isMounted) {
+            setError('Could not load overview');
+          }
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
         }
       }
-    }
 
-    loadOverviewData();
+      loadOverviewData();
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
 
   const totalMonthlyCost = overview ? overview.totalMonthlyCost.toFixed(2) : '0.00';
   const activeSubscriptions = overview ? overview.activeSubscriptions : 0;
@@ -82,7 +84,7 @@ export default function OverviewScreen() {
       .map((item) => item.renewalDate as string)
       .sort((a, b) => a.localeCompare(b));
 
-    return dates[0] ?? 'â€”';
+    return dates[0] ?? '—';
   }
 
   return (
@@ -152,7 +154,7 @@ export default function OverviewScreen() {
               >
                 <View>
                   <Text style={styles.rowTitle}>{item.name}</Text>
-                  <Text style={styles.rowMeta}>{item.renewalDate ?? 'â€”'}</Text>
+                  <Text style={styles.rowMeta}>{item.renewalDate ?? '—'}</Text>
                 </View>
                 <Text style={styles.rowValue}>EUR {item.monthlyPrice.toFixed(2)}</Text>
               </Pressable>
