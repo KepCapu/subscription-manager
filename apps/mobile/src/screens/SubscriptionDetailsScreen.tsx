@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteSubscription, fetchSubscriptionDetails } from '../api/subscriptions';
 import { colors } from '../theme/colors';
@@ -14,38 +15,40 @@ export default function SubscriptionDetailsScreen({ route, navigation }: Props) 
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError(null);
+      async function loadData() {
+        try {
+          setLoading(true);
+          setError(null);
 
-        const data = await fetchSubscriptionDetails(route.params.subscriptionId);
+          const data = await fetchSubscriptionDetails(route.params.subscriptionId);
 
-        if (isMounted) {
-          setSubscriptionDetails(data);
-        }
-      } catch (err) {
-        console.error('Subscription details load error:', err);
+          if (isMounted) {
+            setSubscriptionDetails(data);
+          }
+        } catch (err) {
+          console.error('Subscription details load error:', err);
 
-        if (isMounted) {
-          setError('Could not load subscription details');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+          if (isMounted) {
+            setError('Could not load subscription details');
+          }
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
         }
       }
-    }
 
-    loadData();
+      loadData();
 
-    return () => {
-      isMounted = false;
-    };
-  }, [route.params.subscriptionId]);
+      return () => {
+        isMounted = false;
+      };
+    }, [route.params.subscriptionId])
+  );
 
   const chargeHistory = useMemo(() => {
     if (!subscriptionDetails) {
