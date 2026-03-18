@@ -1,9 +1,11 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import subscriptionsRouter from './routes/subscriptions';
 import cardsRouter from './routes/cards';
 import overviewRouter from './routes/overview';
+import emailAccountsRouter from './routes/emailAccounts';
+import subscriptionCandidatesRouter from './routes/subscriptionCandidates';
 import { errorHandler } from './middleware/errorHandler';
 import { dbPool } from './db/pool';
 
@@ -42,6 +44,8 @@ app.get('/health/db', async (_req, res) => {
 app.use('/subscriptions', subscriptionsRouter);
 app.use('/cards', cardsRouter);
 app.use('/overview', overviewRouter);
+app.use('/email-accounts', emailAccountsRouter);
+app.use('/subscription-candidates', subscriptionCandidatesRouter);
 
 app.use(errorHandler);
 

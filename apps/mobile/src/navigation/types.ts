@@ -17,4 +17,6 @@ export type RootTabParamList = {
   Cards: NavigatorScreenParams<CardsStackParamList>;
   Subscriptions: NavigatorScreenParams<SubscriptionStackParamList>;
   Profile: undefined;
+  EmailAccounts: undefined;
+  DetectedSubscriptions: undefined;
 };
