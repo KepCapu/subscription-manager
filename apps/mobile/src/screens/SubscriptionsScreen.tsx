@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { fetchSubscriptions } from '../api/subscriptions';
@@ -16,43 +16,45 @@ export default function SubscriptionsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    async function loadSubscriptions() {
-      try {
-        setLoading(true);
-        setError(null);
+      async function loadSubscriptions() {
+        try {
+          setLoading(true);
+          setError(null);
 
-        const items = await fetchSubscriptions();
+          const items = await fetchSubscriptions();
 
-        if (isMounted) {
-          setSubscriptions(items);
-        }
-      } catch (err) {
-        console.error('Subscriptions load error:', err);
+          if (isMounted) {
+            setSubscriptions(items);
+          }
+        } catch (err) {
+          console.error('Subscriptions load error:', err);
 
-        if (isMounted) {
-          setError('Could not load subscriptions');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+          if (isMounted) {
+            setError('Could not load subscriptions');
+          }
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
         }
       }
-    }
 
-    loadSubscriptions();
+      loadSubscriptions();
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
 
   const totalActiveSubscriptions = subscriptions.length;
-  const totalMonthlyCost = subscriptions
-    .reduce((sum, item) => sum + item.monthlyPrice, 0)
-    .toFixed(2);
+  const totalMonthlyCost = useMemo(() => {
+    return subscriptions.reduce((sum, item) => sum + item.monthlyPrice, 0).toFixed(2);
+  }, [subscriptions]);
 
   return (
     <SafeAreaView style={styles.container}>

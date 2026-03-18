@@ -10,10 +10,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { fetchCards } from '../api/cards';
 import { createSubscription } from '../api/subscriptions';
 import { Card } from '../types/card';
+import { SubscriptionStackParamList } from '../navigation/types';
+
+type AddSubscriptionScreenNavigationProp =
+  NativeStackNavigationProp<SubscriptionStackParamList, 'AddSubscription'>;
 
 function createSubscriptionId(name: string) {
   const slug = name
@@ -26,6 +32,7 @@ function createSubscriptionId(name: string) {
 }
 
 export default function AddSubscriptionScreen() {
+  const navigation = useNavigation<AddSubscriptionScreenNavigationProp>();
   const [name, setName] = useState('');
   const [monthlyPrice, setMonthlyPrice] = useState('');
   const [renewalDate, setRenewalDate] = useState('');
@@ -120,10 +127,7 @@ export default function AddSubscriptionScreen() {
         renewalDate: renewalDate.trim() ? renewalDate.trim() : null,
       });
 
-      Alert.alert('Success', 'Subscription created.');
-      setName('');
-      setMonthlyPrice('');
-      setRenewalDate('');
+      navigation.goBack();
     } catch (err) {
       console.error('Create subscription error:', err);
       setError('Could not create subscription');
