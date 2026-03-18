@@ -1,4 +1,4 @@
-﻿import { NavigatorScreenParams } from '@react-navigation/native';
+import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type CardsStackParamList = {
   CardsList: undefined;
@@ -8,6 +8,7 @@ export type CardsStackParamList = {
 export type SubscriptionStackParamList = {
   SubscriptionsList: undefined;
   AddSubscription: undefined;
+  EditSubscription: { subscriptionId: string };
   SubscriptionDetails: { subscriptionId: string };
 };
 

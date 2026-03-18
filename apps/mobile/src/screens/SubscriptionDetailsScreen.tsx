@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteSubscription, fetchSubscriptionDetails } from '../api/subscriptions';
@@ -137,6 +137,23 @@ export default function SubscriptionDetailsScreen({ route, navigation }: Props) 
           </Text>
         </View>
 
+        <Pressable
+          onPress={() =>
+            subscriptionDetails &&
+            navigation.navigate('EditSubscription', {
+              subscriptionId: subscriptionDetails.id,
+            })
+          }
+          disabled={loading || !subscriptionDetails}
+          style={({ pressed }) => [
+            styles.editButton,
+            (loading || !subscriptionDetails) && styles.editButtonDisabled,
+            pressed && !loading && subscriptionDetails && styles.editButtonPressed,
+          ]}
+        >
+          <Text style={styles.editButtonText}>Edit subscription</Text>
+        </Pressable>
+
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Subscription info</Text>
 
@@ -162,7 +179,7 @@ export default function SubscriptionDetailsScreen({ route, navigation }: Props) 
 
               <View style={[styles.infoRow, styles.rowBorder]}>
                 <Text style={styles.infoLabel}>Next renewal</Text>
-                <Text style={styles.infoValue}>{subscriptionDetails.renewalDate ?? '—'}</Text>
+                <Text style={styles.infoValue}>{subscriptionDetails.renewalDate ?? '�'}</Text>
               </View>
 
               <View style={styles.infoRow}>
@@ -291,6 +308,26 @@ const styles = StyleSheet.create({
     color: colors.success,
     marginTop: 6,
     fontWeight: '600',
+  },
+  editButton: {
+    backgroundColor: colors.text,
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  editButtonDisabled: {
+    opacity: 0.5,
+  },
+  editButtonPressed: {
+    opacity: 0.8,
+  },
+  editButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '700',
   },
   sectionCard: {
     backgroundColor: colors.card,
