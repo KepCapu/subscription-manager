@@ -17,11 +17,16 @@ export type DetectedSubscriptionsStackParamList = {
   DetectedSubscriptionDetails: { candidateId: string };
 };
 
+export type EmailAccountsStackParamList = {
+  EmailAccountsList: undefined;
+  EmailAccountDetails: { emailAccountId: string };
+};
+
 export type RootTabParamList = {
   Overview: undefined;
   Cards: NavigatorScreenParams<CardsStackParamList>;
   Subscriptions: NavigatorScreenParams<SubscriptionStackParamList>;
   Profile: undefined;
-  EmailAccounts: undefined;
+  EmailAccounts: NavigatorScreenParams<EmailAccountsStackParamList>;
   DetectedSubscriptions: NavigatorScreenParams<DetectedSubscriptionsStackParamList>;
 };

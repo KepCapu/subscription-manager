@@ -41,6 +41,15 @@ export async function fetchSubscriptionCandidates(
   return data.items;
 }
 
+export async function fetchSubscriptionCandidatesByEmailAccountId(
+  emailAccountId: string
+): Promise<SubscriptionCandidate[]> {
+  const data = await apiGet<ListResponse<SubscriptionCandidate>>(
+    '/subscription-candidates?emailAccountId=' + encodeURIComponent(emailAccountId)
+  );
+  return data.items;
+}
+
 export async function fetchSubscriptionCandidateById(
   candidateId: string
 ): Promise<SubscriptionCandidate> {

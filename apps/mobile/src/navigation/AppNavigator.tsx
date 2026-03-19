@@ -3,10 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import OverviewScreen from '../screens/OverviewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import EmailAccountsScreen from '../screens/EmailAccountsScreen';
 import CardsStack from './CardsStack';
 import SubscriptionStack from './SubscriptionStack';
 import DetectedSubscriptionsStack from './DetectedSubscriptionsStack';
+import EmailAccountsStack from './EmailAccountsStack';
 import { colors } from '../theme/colors';
 import { RootTabParamList } from './types';
 
@@ -33,7 +33,7 @@ export default function AppNavigator() {
         <Tab.Screen name="Cards" component={CardsStack} />
         <Tab.Screen name="Subscriptions" component={SubscriptionStack} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
-        <Tab.Screen name="EmailAccounts" component={EmailAccountsScreen} />
+        <Tab.Screen name="EmailAccounts" component={EmailAccountsStack} />
         <Tab.Screen name="DetectedSubscriptions" component={DetectedSubscriptionsStack} />
       </Tab.Navigator>
     </NavigationContainer>

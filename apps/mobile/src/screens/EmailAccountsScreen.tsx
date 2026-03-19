@@ -10,20 +10,16 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   createEmailAccount,
   fetchEmailAccounts,
   EmailAccount,
-  triggerEmailAccountSync,
-  updateEmailAccountStatus,
 } from '../api/emailAccounts';
-import { fetchSyncRunsByEmailAccountId } from '../api/emailSyncRuns';
-import { EmailSyncRun } from '../types/emailSyncRun';
+import { EmailAccountsStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 
-type SyncRunsByAccountMap = Record<string, EmailSyncRun[]>;
-type SyncHistoryErrorByAccountMap = Record<string, string | null>;
-type SyncHistoryLoadingByAccountMap = Record<string, boolean>;
+type Props = NativeStackScreenProps<EmailAccountsStackParamList, 'EmailAccountsList'>;
 
 function createEmailAccountId(email: string) {
   const slug = email
@@ -35,45 +31,12 @@ function createEmailAccountId(email: string) {
   return 'email-' + slug + '-' + Date.now().toString().slice(-6);
 }
 
-function formatSyncDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
-function getSyncStatusStyle(status: string) {
-  if (status === 'completed') {
-    return styles.syncStatusCompleted;
-  }
-
-  if (status === 'failed') {
-    return styles.syncStatusFailed;
-  }
-
-  if (status === 'running') {
-    return styles.syncStatusRunning;
-  }
-
-  return styles.syncStatusDefault;
-}
-
-export default function EmailAccountsScreen() {
+export default function EmailAccountsScreen({ navigation }: Props) {
   const [items, setItems] = useState<EmailAccount[]>([]);
-  const [syncRunsByAccount, setSyncRunsByAccount] = useState<SyncRunsByAccountMap>({});
-  const [syncHistoryErrorByAccount, setSyncHistoryErrorByAccount] =
-    useState<SyncHistoryErrorByAccountMap>({});
-  const [syncHistoryLoadingByAccount, setSyncHistoryLoadingByAccount] =
-    useState<SyncHistoryLoadingByAccountMap>({});
   const [email, setEmail] = useState('');
   const [provider, setProvider] = useState('gmail');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadEmailAccounts = useCallback(async () => {
@@ -83,61 +46,9 @@ export default function EmailAccountsScreen() {
 
       const data = await fetchEmailAccounts();
       setItems(data);
-
-      const nextSyncHistoryLoadingByAccount = data.reduce<SyncHistoryLoadingByAccountMap>(
-        (acc, account) => {
-          acc[account.id] = true;
-          return acc;
-        },
-        {}
-      );
-      setSyncHistoryLoadingByAccount(nextSyncHistoryLoadingByAccount);
-      setSyncHistoryErrorByAccount({});
-
-      const syncRunResults = await Promise.all(
-        data.map(async (account) => {
-          try {
-            const runs = await fetchSyncRunsByEmailAccountId(account.id);
-            return { accountId: account.id, runs, error: null as string | null };
-          } catch (err) {
-            console.error('Sync runs load error for account ' + account.id + ':', err);
-            return {
-              accountId: account.id,
-              runs: [] as EmailSyncRun[],
-              error: 'Could not load sync history',
-            };
-          }
-        })
-      );
-
-      const nextSyncRunsByAccount = syncRunResults.reduce<SyncRunsByAccountMap>((acc, result) => {
-        acc[result.accountId] = result.runs;
-        return acc;
-      }, {});
-      const nextSyncHistoryErrorByAccount = syncRunResults.reduce<SyncHistoryErrorByAccountMap>(
-        (acc, result) => {
-          acc[result.accountId] = result.error;
-          return acc;
-        },
-        {}
-      );
-      const nextSyncHistoryLoadingDone = data.reduce<SyncHistoryLoadingByAccountMap>(
-        (acc, account) => {
-          acc[account.id] = false;
-          return acc;
-        },
-        {}
-      );
-
-      setSyncRunsByAccount(nextSyncRunsByAccount);
-      setSyncHistoryErrorByAccount(nextSyncHistoryErrorByAccount);
-      setSyncHistoryLoadingByAccount(nextSyncHistoryLoadingDone);
     } catch (err) {
       console.error('Email accounts load error:', err);
       setError('Could not load email accounts');
-      setSyncRunsByAccount({});
-      setSyncHistoryErrorByAccount({});
-      setSyncHistoryLoadingByAccount({});
     } finally {
       setLoading(false);
     }
@@ -206,39 +117,6 @@ export default function EmailAccountsScreen() {
     }
   }
 
-  async function handleDeactivate(emailAccountId: string) {
-    try {
-      setUpdatingId(emailAccountId);
-      setError(null);
-
-      await updateEmailAccountStatus(emailAccountId, {
-        status: 'inactive',
-      });
-
-      await loadEmailAccounts();
-    } catch (err) {
-      console.error('Deactivate email account error:', err);
-      setError('Could not deactivate email account');
-    } finally {
-      setUpdatingId(null);
-    }
-  }
-
-  async function handleRunSync(emailAccountId: string) {
-    try {
-      setSyncingId(emailAccountId);
-      setError(null);
-
-      await triggerEmailAccountSync(emailAccountId);
-      await loadEmailAccounts();
-    } catch (err) {
-      console.error('Run sync error:', err);
-      Alert.alert('Sync failed', 'Could not run sync for this email account.');
-    } finally {
-      setSyncingId(null);
-    }
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -297,8 +175,11 @@ export default function EmailAccountsScreen() {
             <Text style={styles.infoText}>No email accounts connected yet.</Text>
           ) : (
             items.map((item, index) => (
-              <View
+              <Pressable
                 key={item.id}
+                onPress={() =>
+                  navigation.navigate('EmailAccountDetails', { emailAccountId: item.id })
+                }
                 style={[
                   styles.accountRow,
                   index !== items.length - 1 && styles.rowBorder,
@@ -310,41 +191,6 @@ export default function EmailAccountsScreen() {
                   <Text style={styles.rowMeta}>
                     Last synced: {item.lastSyncedAt ?? 'Not synced yet'}
                   </Text>
-
-                  <View style={styles.syncHistoryWrap}>
-                    <Text style={styles.syncHistoryTitle}>Sync history</Text>
-
-                    {syncHistoryLoadingByAccount[item.id] ? (
-                      <Text style={styles.infoText}>Loading sync history...</Text>
-                    ) : syncHistoryErrorByAccount[item.id] ? (
-                      <Text style={styles.errorText}>{syncHistoryErrorByAccount[item.id]}</Text>
-                    ) : (syncRunsByAccount[item.id] ?? []).length === 0 ? (
-                      <Text style={styles.infoText}>No sync runs yet.</Text>
-                    ) : (
-                      <>
-                        {(syncRunsByAccount[item.id] ?? []).slice(0, 3).map((run) => (
-                          <View key={run.id} style={styles.syncRunItem}>
-                            <Text style={[styles.syncStatus, getSyncStatusStyle(run.status)]}>
-                              {run.status}
-                            </Text>
-                            <Text style={styles.syncMeta}>
-                              Started: {formatSyncDate(run.startedAt)}
-                            </Text>
-                            <Text style={styles.syncMeta}>
-                              Candidates found: {run.candidatesFound}
-                            </Text>
-                            {run.status === 'failed' && run.errorMessage ? (
-                              <Text style={styles.syncErrorText}>{run.errorMessage}</Text>
-                            ) : null}
-                          </View>
-                        ))}
-                        <Text style={styles.syncMetaNote}>
-                          Showing last {Math.min(3, (syncRunsByAccount[item.id] ?? []).length)} of{' '}
-                          {(syncRunsByAccount[item.id] ?? []).length}
-                        </Text>
-                      </>
-                    )}
-                  </View>
                 </View>
 
                 <View style={styles.rightCol}>
@@ -356,39 +202,8 @@ export default function EmailAccountsScreen() {
                   >
                     {item.status}
                   </Text>
-
-                  {item.status === 'active' ? (
-                    <>
-                      <Pressable
-                        onPress={() => handleRunSync(item.id)}
-                        disabled={syncingId === item.id}
-                        style={({ pressed }) => [
-                          styles.syncButton,
-                          syncingId === item.id && styles.actionButtonDisabled,
-                          pressed && syncingId !== item.id && styles.pressedRow,
-                        ]}
-                      >
-                        <Text style={styles.syncButtonText}>
-                          {syncingId === item.id ? 'Syncing...' : 'Run sync'}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => handleDeactivate(item.id)}
-                        disabled={updatingId === item.id}
-                        style={({ pressed }) => [
-                          styles.deactivateButton,
-                          updatingId === item.id && styles.actionButtonDisabled,
-                          pressed && updatingId !== item.id && styles.pressedRow,
-                        ]}
-                      >
-                        <Text style={styles.deactivateButtonText}>
-                          {updatingId === item.id ? 'Working...' : 'Deactivate'}
-                        </Text>
-                      </Pressable>
-                    </>
-                  ) : null}
                 </View>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -470,6 +285,9 @@ const styles = StyleSheet.create({
   pressedRow: {
     opacity: 0.8,
   },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
   rowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -490,53 +308,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 4,
   },
-  syncHistoryWrap: {
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  syncHistoryTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  syncRunItem: {
-    paddingVertical: 8,
-  },
-  syncStatus: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  syncStatusCompleted: {
-    color: colors.success,
-  },
-  syncStatusFailed: {
-    color: '#DC2626',
-  },
-  syncStatusRunning: {
-    color: colors.primary,
-  },
-  syncStatusDefault: {
-    color: colors.muted,
-  },
-  syncMeta: {
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 4,
-  },
-  syncMetaNote: {
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 6,
-  },
-  syncErrorText: {
-    fontSize: 12,
-    color: '#DC2626',
-    marginTop: 4,
-  },
   rowStatus: {
     fontSize: 13,
     fontWeight: '700',
@@ -545,37 +316,6 @@ const styles = StyleSheet.create({
   },
   rowStatusInactive: {
     color: colors.muted,
-  },
-  deactivateButton: {
-    marginTop: 10,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  syncButton: {
-    marginTop: 10,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  syncButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  deactivateButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
   },
   infoText: {
     fontSize: 14,
