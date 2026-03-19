@@ -9,18 +9,21 @@ import {
 } from '../api/subscriptionCandidates';
 import { colors } from '../theme/colors';
 
+type CandidateFilter = 'possible_subscription' | 'confirmed_subscription' | 'one_time_purchase';
+
 export default function DetectedSubscriptionsScreen() {
   const [items, setItems] = useState<SubscriptionCandidate[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState<CandidateFilter>('possible_subscription');
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCandidates = useCallback(async () => {
+  const loadCandidates = useCallback(async (filter: CandidateFilter) => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await fetchSubscriptionCandidates('possible_subscription');
+      const data = await fetchSubscriptionCandidates(filter);
       setItems(data);
     } catch (err) {
       console.error('Detected subscriptions load error:', err);
@@ -39,7 +42,7 @@ export default function DetectedSubscriptionsScreen() {
           setLoading(true);
           setError(null);
 
-          const data = await fetchSubscriptionCandidates('possible_subscription');
+          const data = await fetchSubscriptionCandidates(selectedFilter);
 
           if (isMounted) {
             setItems(data);
@@ -62,7 +65,7 @@ export default function DetectedSubscriptionsScreen() {
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, [selectedFilter])
   );
 
   async function handleConfirm(candidateId: string) {
@@ -71,7 +74,7 @@ export default function DetectedSubscriptionsScreen() {
       setError(null);
 
       await confirmSubscriptionCandidate(candidateId);
-      await loadCandidates();
+      await loadCandidates(selectedFilter);
     } catch (err) {
       console.error('Confirm detected subscription error:', err);
       setError('Could not confirm detected subscription');
@@ -89,7 +92,7 @@ export default function DetectedSubscriptionsScreen() {
         detectedStatus: 'ignored',
       });
 
-      await loadCandidates();
+      await loadCandidates(selectedFilter);
     } catch (err) {
       console.error('Ignore detected subscription error:', err);
       setError('Could not ignore detected subscription');
@@ -107,13 +110,37 @@ export default function DetectedSubscriptionsScreen() {
         detectedStatus: 'one_time_purchase',
       });
 
-      await loadCandidates();
+      await loadCandidates(selectedFilter);
     } catch (err) {
       console.error('Mark one-time detected subscription error:', err);
       setError('Could not mark detected subscription as one-time');
     } finally {
       setUpdatingId(null);
     }
+  }
+
+  function getSectionTitle() {
+    if (selectedFilter === 'confirmed_subscription') {
+      return 'Confirmed subscriptions';
+    }
+
+    if (selectedFilter === 'one_time_purchase') {
+      return 'One-time purchases';
+    }
+
+    return 'Possible subscriptions';
+  }
+
+  function getEmptyText() {
+    if (selectedFilter === 'confirmed_subscription') {
+      return 'No confirmed subscriptions found.';
+    }
+
+    if (selectedFilter === 'one_time_purchase') {
+      return 'No one-time purchases found.';
+    }
+
+    return 'No possible subscriptions found.';
   }
 
   return (
@@ -124,15 +151,50 @@ export default function DetectedSubscriptionsScreen() {
           Review possible subscriptions found from connected email accounts.
         </Text>
 
+        <View style={styles.filterRow}>
+          <Pressable
+            onPress={() => setSelectedFilter('possible_subscription')}
+            style={({ pressed }) => [
+              styles.filterButton,
+              selectedFilter === 'possible_subscription' && styles.filterButtonSelected,
+              pressed && styles.pressedRow,
+            ]}
+          >
+            <Text style={styles.filterButtonText}>Possible</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setSelectedFilter('confirmed_subscription')}
+            style={({ pressed }) => [
+              styles.filterButton,
+              selectedFilter === 'confirmed_subscription' && styles.filterButtonSelected,
+              pressed && styles.pressedRow,
+            ]}
+          >
+            <Text style={styles.filterButtonText}>Confirmed</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setSelectedFilter('one_time_purchase')}
+            style={({ pressed }) => [
+              styles.filterButton,
+              selectedFilter === 'one_time_purchase' && styles.filterButtonSelected,
+              pressed && styles.pressedRow,
+            ]}
+          >
+            <Text style={styles.filterButtonText}>One-time</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Possible subscriptions</Text>
+          <Text style={styles.sectionTitle}>{getSectionTitle()}</Text>
 
           {loading ? (
             <Text style={styles.infoText}>Loading detected subscriptions...</Text>
           ) : error ? (
             <Text style={styles.errorText}>{error}</Text>
           ) : items.length === 0 ? (
-            <Text style={styles.infoText}>No possible subscriptions found.</Text>
+            <Text style={styles.infoText}>{getEmptyText()}</Text>
           ) : (
             items.map((item, index) => (
               <View
@@ -163,43 +225,47 @@ export default function DetectedSubscriptionsScreen() {
                     {Math.round(item.confidence * 100)}%
                   </Text>
 
-                  <Pressable
-                    onPress={() => handleConfirm(item.id)}
-                    disabled={updatingId === item.id}
-                    style={({ pressed }) => [
-                      styles.confirmButton,
-                      updatingId === item.id && styles.actionButtonDisabled,
-                      pressed && updatingId !== item.id && styles.pressedRow,
-                    ]}
-                  >
-                    <Text style={styles.confirmButtonText}>
-                      {updatingId === item.id ? 'Working...' : 'Confirm'}
-                    </Text>
-                  </Pressable>
+                  {selectedFilter === 'possible_subscription' ? (
+                    <>
+                      <Pressable
+                        onPress={() => handleConfirm(item.id)}
+                        disabled={updatingId === item.id}
+                        style={({ pressed }) => [
+                          styles.confirmButton,
+                          updatingId === item.id && styles.actionButtonDisabled,
+                          pressed && updatingId !== item.id && styles.pressedRow,
+                        ]}
+                      >
+                        <Text style={styles.confirmButtonText}>
+                          {updatingId === item.id ? 'Working...' : 'Confirm'}
+                        </Text>
+                      </Pressable>
 
-                  <Pressable
-                    onPress={() => handleMarkOneTime(item.id)}
-                    disabled={updatingId === item.id}
-                    style={({ pressed }) => [
-                      styles.oneTimeButton,
-                      updatingId === item.id && styles.actionButtonDisabled,
-                      pressed && updatingId !== item.id && styles.pressedRow,
-                    ]}
-                  >
-                    <Text style={styles.oneTimeButtonText}>One-time</Text>
-                  </Pressable>
+                      <Pressable
+                        onPress={() => handleMarkOneTime(item.id)}
+                        disabled={updatingId === item.id}
+                        style={({ pressed }) => [
+                          styles.oneTimeButton,
+                          updatingId === item.id && styles.actionButtonDisabled,
+                          pressed && updatingId !== item.id && styles.pressedRow,
+                        ]}
+                      >
+                        <Text style={styles.oneTimeButtonText}>One-time</Text>
+                      </Pressable>
 
-                  <Pressable
-                    onPress={() => handleIgnore(item.id)}
-                    disabled={updatingId === item.id}
-                    style={({ pressed }) => [
-                      styles.ignoreButton,
-                      updatingId === item.id && styles.actionButtonDisabled,
-                      pressed && updatingId !== item.id && styles.pressedRow,
-                    ]}
-                  >
-                    <Text style={styles.ignoreButtonText}>Ignore</Text>
-                  </Pressable>
+                      <Pressable
+                        onPress={() => handleIgnore(item.id)}
+                        disabled={updatingId === item.id}
+                        style={({ pressed }) => [
+                          styles.ignoreButton,
+                          updatingId === item.id && styles.actionButtonDisabled,
+                          pressed && updatingId !== item.id && styles.pressedRow,
+                        ]}
+                      >
+                        <Text style={styles.ignoreButtonText}>Ignore</Text>
+                      </Pressable>
+                    </>
+                  ) : null}
                 </View>
               </View>
             ))
@@ -229,6 +295,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.muted,
     marginBottom: 20,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  filterButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterButtonSelected: {
+    borderColor: colors.text,
+  },
+  filterButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
   },
   sectionCard: {
     backgroundColor: colors.card,
