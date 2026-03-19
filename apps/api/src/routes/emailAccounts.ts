@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { createEmailAccount, getEmailAccounts } from '../services/emailAccounts';
+import {
+  createEmailAccount,
+  getEmailAccounts,
+  updateEmailAccountStatus,
+} from '../services/emailAccounts';
 
 const router = Router();
 
@@ -36,6 +40,34 @@ router.post('/', async (req, res, next) => {
     });
 
     res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/status', async (req, res, next) => {
+  try {
+    const { status } = req.body ?? {};
+
+    if (!status) {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'status is required',
+      });
+      return;
+    }
+
+    const item = await updateEmailAccountStatus(req.params.id, String(status));
+
+    if (!item) {
+      res.status(404).json({
+        error: 'EMAIL_ACCOUNT_NOT_FOUND',
+        message: 'Email account not found',
+      });
+      return;
+    }
+
+    res.json(item);
   } catch (error) {
     next(error);
   }

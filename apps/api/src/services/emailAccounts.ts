@@ -80,3 +80,30 @@ export async function createEmailAccount(
 
   return mapEmailAccount(result.rows[0]);
 }
+
+export async function updateEmailAccountStatus(
+  id: string,
+  status: string
+): Promise<EmailAccount | null> {
+  const result = await dbPool.query<EmailAccountRow>(
+    `UPDATE email_accounts
+     SET status = $2,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING
+       id,
+       email,
+       provider,
+       status,
+       created_at,
+       updated_at,
+       last_synced_at`,
+    [id, status]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapEmailAccount(result.rows[0]);
+}
