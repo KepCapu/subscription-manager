@@ -1,4 +1,5 @@
 import { dbPool } from '../db/pool';
+import { createSubscription } from './subscriptions';
 
 export type SubscriptionCandidate = {
   id: string;
@@ -41,6 +42,17 @@ export type CreateSubscriptionCandidateInput = {
   confidence?: number;
 };
 
+export type ConfirmSubscriptionCandidateResult =
+  | { ok: true; subscriptionId: string }
+  | {
+      ok: false;
+      reason:
+        | 'SUBSCRIPTION_CANDIDATE_NOT_FOUND'
+        | 'CANDIDATE_MISSING_REQUIRED_FIELDS'
+        | 'CARD_NOT_FOUND'
+        | 'SUBSCRIPTION_ALREADY_CREATED';
+    };
+
 type SubscriptionCandidateRow = {
   id: string;
   email_account_id: string;
@@ -60,6 +72,10 @@ type SubscriptionCandidateRow = {
   source_country: string | null;
   confidence: string;
   created_at: string;
+};
+
+type CardLookupRow = {
+  id: string;
 };
 
 function mapSubscriptionCandidate(row: SubscriptionCandidateRow): SubscriptionCandidate {
@@ -85,30 +101,32 @@ function mapSubscriptionCandidate(row: SubscriptionCandidateRow): SubscriptionCa
   };
 }
 
+const subscriptionCandidateSelect = `SELECT
+   id,
+   email_account_id,
+   sync_run_id,
+   source_message_id,
+   raw_from,
+   raw_subject,
+   merchant_name,
+   subscription_name,
+   amount::text,
+   currency,
+   detected_card_last4,
+   detected_charge_date::text,
+   detected_renewal_date::text,
+   detected_status,
+   source_language,
+   source_country,
+   confidence::text,
+   created_at
+ FROM subscription_candidates`;
+
 export async function getSubscriptionCandidates(
   detectedStatus?: string
 ): Promise<SubscriptionCandidate[]> {
   const params: Array<string> = [];
-  let query = `SELECT
-       id,
-       email_account_id,
-       sync_run_id,
-       source_message_id,
-       raw_from,
-       raw_subject,
-       merchant_name,
-       subscription_name,
-       amount::text,
-       currency,
-       detected_card_last4,
-       detected_charge_date::text,
-       detected_renewal_date::text,
-       detected_status,
-       source_language,
-       source_country,
-       confidence::text,
-       created_at
-     FROM subscription_candidates`;
+  let query = subscriptionCandidateSelect;
 
   if (detectedStatus) {
     params.push(detectedStatus);
@@ -120,6 +138,23 @@ export async function getSubscriptionCandidates(
   const result = await dbPool.query<SubscriptionCandidateRow>(query, params);
 
   return result.rows.map(mapSubscriptionCandidate);
+}
+
+export async function getSubscriptionCandidateById(
+  id: string
+): Promise<SubscriptionCandidate | null> {
+  const result = await dbPool.query<SubscriptionCandidateRow>(
+    `${subscriptionCandidateSelect}
+     WHERE id = $1
+     LIMIT 1`,
+    [id]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapSubscriptionCandidate(result.rows[0]);
 }
 
 export async function createSubscriptionCandidate(
@@ -224,4 +259,56 @@ export async function updateSubscriptionCandidateStatus(
   }
 
   return mapSubscriptionCandidate(result.rows[0]);
+}
+
+export async function confirmSubscriptionCandidate(
+  candidateId: string
+): Promise<ConfirmSubscriptionCandidateResult> {
+  const candidate = await getSubscriptionCandidateById(candidateId);
+
+  if (!candidate) {
+    return { ok: false, reason: 'SUBSCRIPTION_CANDIDATE_NOT_FOUND' };
+  }
+
+  const subscriptionName = candidate.subscriptionName ?? candidate.merchantName;
+
+  if (!subscriptionName || candidate.amount === null || !candidate.detectedCardLast4) {
+    return { ok: false, reason: 'CANDIDATE_MISSING_REQUIRED_FIELDS' };
+  }
+
+  const cardResult = await dbPool.query<CardLookupRow>(
+    `SELECT id
+     FROM cards
+     WHERE last4 = $1
+     ORDER BY id ASC
+     LIMIT 1`,
+    [candidate.detectedCardLast4]
+  );
+
+  if (cardResult.rows.length === 0) {
+    return { ok: false, reason: 'CARD_NOT_FOUND' };
+  }
+
+  const subscriptionId = 'sub-from-' + candidate.id;
+
+  const created = await createSubscription({
+    id: subscriptionId,
+    name: subscriptionName,
+    monthlyPrice: candidate.amount,
+    cardId: cardResult.rows[0].id,
+    status: 'active',
+    renewalDate: candidate.detectedRenewalDate,
+  });
+
+  if (!created.ok) {
+    if (created.reason === 'SUBSCRIPTION_ID_ALREADY_EXISTS') {
+      return { ok: false, reason: 'SUBSCRIPTION_ALREADY_CREATED' };
+    }
+
+    return { ok: false, reason: 'CARD_NOT_FOUND' };
+  }
+
+  await updateSubscriptionCandidateStatus(candidateId, 'confirmed_subscription');
+
+  return { ok: true, subscriptionId };
 }

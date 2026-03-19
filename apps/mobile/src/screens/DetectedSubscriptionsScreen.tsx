@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
+  confirmSubscriptionCandidate,
   fetchSubscriptionCandidates,
   SubscriptionCandidate,
   updateSubscriptionCandidateStatus,
@@ -69,14 +70,47 @@ export default function DetectedSubscriptionsScreen() {
       setUpdatingId(candidateId);
       setError(null);
 
-      await updateSubscriptionCandidateStatus(candidateId, {
-        detectedStatus: 'confirmed_subscription',
-      });
-
+      await confirmSubscriptionCandidate(candidateId);
       await loadCandidates();
     } catch (err) {
       console.error('Confirm detected subscription error:', err);
       setError('Could not confirm detected subscription');
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleIgnore(candidateId: string) {
+    try {
+      setUpdatingId(candidateId);
+      setError(null);
+
+      await updateSubscriptionCandidateStatus(candidateId, {
+        detectedStatus: 'ignored',
+      });
+
+      await loadCandidates();
+    } catch (err) {
+      console.error('Ignore detected subscription error:', err);
+      setError('Could not ignore detected subscription');
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleMarkOneTime(candidateId: string) {
+    try {
+      setUpdatingId(candidateId);
+      setError(null);
+
+      await updateSubscriptionCandidateStatus(candidateId, {
+        detectedStatus: 'one_time_purchase',
+      });
+
+      await loadCandidates();
+    } catch (err) {
+      console.error('Mark one-time detected subscription error:', err);
+      setError('Could not mark detected subscription as one-time');
     } finally {
       setUpdatingId(null);
     }
@@ -119,7 +153,7 @@ export default function DetectedSubscriptionsScreen() {
                     Renewal: {item.detectedRenewalDate ?? 'Unknown'}
                   </Text>
                   <Text style={styles.rowMeta}>
-                    Card: {item.detectedCardLast4 ? '•••• ' + item.detectedCardLast4 : 'Unknown'}
+                    Card: {item.detectedCardLast4 ? 'ending ' + item.detectedCardLast4 : 'Unknown'}
                   </Text>
                 </View>
 
@@ -134,13 +168,37 @@ export default function DetectedSubscriptionsScreen() {
                     disabled={updatingId === item.id}
                     style={({ pressed }) => [
                       styles.confirmButton,
-                      updatingId === item.id && styles.confirmButtonDisabled,
+                      updatingId === item.id && styles.actionButtonDisabled,
                       pressed && updatingId !== item.id && styles.pressedRow,
                     ]}
                   >
                     <Text style={styles.confirmButtonText}>
-                      {updatingId === item.id ? 'Confirming...' : 'Confirm'}
+                      {updatingId === item.id ? 'Working...' : 'Confirm'}
                     </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => handleMarkOneTime(item.id)}
+                    disabled={updatingId === item.id}
+                    style={({ pressed }) => [
+                      styles.oneTimeButton,
+                      updatingId === item.id && styles.actionButtonDisabled,
+                      pressed && updatingId !== item.id && styles.pressedRow,
+                    ]}
+                  >
+                    <Text style={styles.oneTimeButtonText}>One-time</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => handleIgnore(item.id)}
+                    disabled={updatingId === item.id}
+                    style={({ pressed }) => [
+                      styles.ignoreButton,
+                      updatingId === item.id && styles.actionButtonDisabled,
+                      pressed && updatingId !== item.id && styles.pressedRow,
+                    ]}
+                  >
+                    <Text style={styles.ignoreButtonText}>Ignore</Text>
                   </Pressable>
                 </View>
               </View>
@@ -233,13 +291,41 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
-  confirmButtonDisabled: {
-    opacity: 0.5,
-  },
   confirmButtonText: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.background,
+  },
+  oneTimeButton: {
+    marginTop: 8,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  oneTimeButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  ignoreButton: {
+    marginTop: 8,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  ignoreButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
   },
   infoText: {
     fontSize: 14,

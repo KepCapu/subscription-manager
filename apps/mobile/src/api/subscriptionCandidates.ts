@@ -1,4 +1,4 @@
-import { apiGet, apiPatch } from './client';
+import { apiGet, apiPatch, apiPost } from './client';
 import { ListResponse } from '../types/listResponse';
 
 export type SubscriptionCandidate = {
@@ -26,6 +26,11 @@ export type UpdateSubscriptionCandidateStatusPayload = {
   detectedStatus: string;
 };
 
+export type ConfirmSubscriptionCandidateResponse = {
+  ok: true;
+  subscriptionId: string;
+};
+
 export async function fetchSubscriptionCandidates(
   status?: string
 ): Promise<SubscriptionCandidate[]> {
@@ -43,5 +48,14 @@ export async function updateSubscriptionCandidateStatus(
   return apiPatch<SubscriptionCandidate, UpdateSubscriptionCandidateStatusPayload>(
     '/subscription-candidates/' + candidateId + '/status',
     payload
+  );
+}
+
+export async function confirmSubscriptionCandidate(
+  candidateId: string
+): Promise<ConfirmSubscriptionCandidateResponse> {
+  return apiPost<ConfirmSubscriptionCandidateResponse, Record<string, never>>(
+    '/subscription-candidates/' + candidateId + '/confirm',
+    {}
   );
 }

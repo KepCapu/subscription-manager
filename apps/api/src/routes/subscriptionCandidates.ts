@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  confirmSubscriptionCandidate,
   createSubscriptionCandidate,
   getSubscriptionCandidates,
   updateSubscriptionCandidateStatus,
@@ -76,6 +77,45 @@ router.post('/', async (req, res, next) => {
     });
 
     res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:id/confirm', async (req, res, next) => {
+  try {
+    const result = await confirmSubscriptionCandidate(req.params.id);
+
+    if (!result.ok) {
+      if (result.reason === 'SUBSCRIPTION_CANDIDATE_NOT_FOUND') {
+        res.status(404).json({
+          error: result.reason,
+          message: 'Subscription candidate not found',
+        });
+        return;
+      }
+
+      if (
+        result.reason === 'CANDIDATE_MISSING_REQUIRED_FIELDS' ||
+        result.reason === 'CARD_NOT_FOUND'
+      ) {
+        res.status(400).json({
+          error: result.reason,
+          message: result.reason,
+        });
+        return;
+      }
+
+      if (result.reason === 'SUBSCRIPTION_ALREADY_CREATED') {
+        res.status(409).json({
+          error: result.reason,
+          message: 'Subscription already created from this candidate',
+        });
+        return;
+      }
+    }
+
+    res.json(result);
   } catch (error) {
     next(error);
   }
