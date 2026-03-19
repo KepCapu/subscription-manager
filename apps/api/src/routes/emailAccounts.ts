@@ -3,6 +3,7 @@ import {
   createEmailAccount,
   getEmailAccounts,
   updateEmailAccountStatus,
+  VALID_EMAIL_ACCOUNT_STATUSES,
 } from '../services/emailAccounts';
 
 const router = Router();
@@ -57,7 +58,17 @@ router.patch('/:id/status', async (req, res, next) => {
       return;
     }
 
-    const item = await updateEmailAccountStatus(req.params.id, String(status));
+    const nextStatus = String(status);
+
+    if (!VALID_EMAIL_ACCOUNT_STATUSES.includes(nextStatus as (typeof VALID_EMAIL_ACCOUNT_STATUSES)[number])) {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'status must be one of: active, inactive',
+      });
+      return;
+    }
+
+    const item = await updateEmailAccountStatus(req.params.id, nextStatus);
 
     if (!item) {
       res.status(404).json({

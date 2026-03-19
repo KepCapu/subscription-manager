@@ -1,5 +1,7 @@
 import { dbPool } from '../db/pool';
 
+export const VALID_EMAIL_ACCOUNT_STATUSES = ['active', 'inactive'] as const;
+
 export type EmailAccount = {
   id: string;
   email: string;
@@ -85,6 +87,10 @@ export async function updateEmailAccountStatus(
   id: string,
   status: string
 ): Promise<EmailAccount | null> {
+  if (!VALID_EMAIL_ACCOUNT_STATUSES.includes(status as (typeof VALID_EMAIL_ACCOUNT_STATUSES)[number])) {
+    throw new Error('status must be one of: active, inactive');
+  }
+
   const result = await dbPool.query<EmailAccountRow>(
     `UPDATE email_accounts
      SET status = $2,
