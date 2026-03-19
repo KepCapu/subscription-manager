@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fetchSubscriptionCandidateById, SubscriptionCandidate } from '../api/subscriptionCandidates';
+import {
+  confirmSubscriptionCandidate,
+  fetchSubscriptionCandidateById,
+  SubscriptionCandidate,
+  updateSubscriptionCandidateStatus,
+} from '../api/subscriptionCandidates';
 import { DetectedSubscriptionsStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 
@@ -10,15 +15,31 @@ type Props = NativeStackScreenProps<
   'DetectedSubscriptionDetails'
 >;
 
-export default function DetectedSubscriptionDetailsScreen({ route }: Props) {
+export default function DetectedSubscriptionDetailsScreen({ route, navigation }: Props) {
   const [candidate, setCandidate] = useState<SubscriptionCandidate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function loadCandidate() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await fetchSubscriptionCandidateById(route.params.candidateId);
+      setCandidate(data);
+    } catch (err) {
+      console.error('Detected candidate load error:', err);
+      setError('Could not load detected candidate');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadCandidate() {
+    async function run() {
       try {
         setLoading(true);
         setError(null);
@@ -41,18 +62,85 @@ export default function DetectedSubscriptionDetailsScreen({ route }: Props) {
       }
     }
 
-    loadCandidate();
+    run();
 
     return () => {
       isMounted = false;
     };
   }, [route.params.candidateId]);
 
+  async function handleConfirm() {
+    if (!candidate || working) {
+      return;
+    }
+
+    try {
+      setWorking(true);
+      setError(null);
+
+      await confirmSubscriptionCandidate(candidate.id);
+      navigation.goBack();
+    } catch (err) {
+      console.error('Confirm candidate error:', err);
+      setError('Could not confirm candidate');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleOneTime() {
+    if (!candidate || working) {
+      return;
+    }
+
+    try {
+      setWorking(true);
+      setError(null);
+
+      await updateSubscriptionCandidateStatus(candidate.id, {
+        detectedStatus: 'one_time_purchase',
+      });
+
+      navigation.goBack();
+    } catch (err) {
+      console.error('Mark one-time candidate error:', err);
+      setError('Could not mark candidate as one-time');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleIgnore() {
+    if (!candidate || working) {
+      return;
+    }
+
+    try {
+      setWorking(true);
+      setError(null);
+
+      await updateSubscriptionCandidateStatus(candidate.id, {
+        detectedStatus: 'ignored',
+      });
+
+      navigation.goBack();
+    } catch (err) {
+      console.error('Ignore candidate error:', err);
+      setError('Could not ignore candidate');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  const showActions = candidate?.detectedStatus === 'possible_subscription';
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>
-          {loading ? 'Loading...' : candidate?.subscriptionName ?? candidate?.merchantName ?? 'Detected candidate'}
+          {loading
+            ? 'Loading...'
+            : candidate?.subscriptionName ?? candidate?.merchantName ?? 'Detected candidate'}
         </Text>
         <Text style={styles.subtitle}>
           Review candidate details detected from email ingestion.
@@ -81,7 +169,9 @@ export default function DetectedSubscriptionDetailsScreen({ route }: Props) {
 
               <View style={[styles.infoRow, styles.rowBorder]}>
                 <Text style={styles.infoLabel}>Confidence</Text>
-                <Text style={styles.infoValue}>{Math.round(candidate.confidence * 100)}%</Text>
+                <Text style={styles.infoValue}>
+                  {Math.round(candidate.confidence * 100)}%
+                </Text>
               </View>
 
               <View style={[styles.infoRow, styles.rowBorder]}>
@@ -140,6 +230,50 @@ export default function DetectedSubscriptionDetailsScreen({ route }: Props) {
             </>
           )}
         </View>
+
+        {showActions ? (
+          <View style={styles.actionsCard}>
+            <Text style={styles.sectionTitle}>Actions</Text>
+
+            <Pressable
+              onPress={handleConfirm}
+              disabled={working}
+              style={({ pressed }) => [
+                styles.confirmButton,
+                working && styles.actionButtonDisabled,
+                pressed && !working && styles.pressed,
+              ]}
+            >
+              <Text style={styles.confirmButtonText}>
+                {working ? 'Working...' : 'Confirm'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleOneTime}
+              disabled={working}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                working && styles.actionButtonDisabled,
+                pressed && !working && styles.pressed,
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>One-time</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleIgnore}
+              disabled={working}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                working && styles.actionButtonDisabled,
+                pressed && !working && styles.pressed,
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>Ignore</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -166,6 +300,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+  },
+  actionsCard: {
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
@@ -200,6 +342,38 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
     textAlign: 'right',
+  },
+  confirmButton: {
+    backgroundColor: colors.text,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  confirmButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.background,
+  },
+  secondaryButton: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 10,
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  pressed: {
+    opacity: 0.8,
   },
   infoText: {
     fontSize: 14,
