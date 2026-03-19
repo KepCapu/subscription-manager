@@ -5,6 +5,7 @@ import {
   updateEmailAccountStatus,
   VALID_EMAIL_ACCOUNT_STATUSES,
 } from '../services/emailAccounts';
+import { runMockSync } from '../services/emailSyncRuns';
 
 const router = Router();
 
@@ -79,6 +80,32 @@ router.patch('/:id/status', async (req, res, next) => {
     }
 
     res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:id/sync', async (req, res, next) => {
+  try {
+    const result = await runMockSync(req.params.id);
+
+    if (!result.ok) {
+      if (result.reason === 'EMAIL_ACCOUNT_NOT_FOUND') {
+        res.status(404).json({
+          error: result.reason,
+          message: 'Email account not found',
+        });
+        return;
+      }
+
+      res.status(400).json({
+        error: result.reason,
+        message: 'Email account must be active to run sync',
+      });
+      return;
+    }
+
+    res.status(201).json(result.item);
   } catch (error) {
     next(error);
   }
