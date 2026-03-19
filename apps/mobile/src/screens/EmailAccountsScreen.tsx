@@ -16,7 +16,13 @@ import {
   EmailAccount,
   updateEmailAccountStatus,
 } from '../api/emailAccounts';
+import { fetchSyncRunsByEmailAccountId } from '../api/emailSyncRuns';
+import { EmailSyncRun } from '../types/emailSyncRun';
 import { colors } from '../theme/colors';
+
+type SyncRunsByAccountMap = Record<string, EmailSyncRun[]>;
+type SyncHistoryErrorByAccountMap = Record<string, string | null>;
+type SyncHistoryLoadingByAccountMap = Record<string, boolean>;
 
 function createEmailAccountId(email: string) {
   const slug = email
@@ -28,8 +34,39 @@ function createEmailAccountId(email: string) {
   return 'email-' + slug + '-' + Date.now().toString().slice(-6);
 }
 
+function formatSyncDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
+function getSyncStatusStyle(status: string) {
+  if (status === 'completed') {
+    return styles.syncStatusCompleted;
+  }
+
+  if (status === 'failed') {
+    return styles.syncStatusFailed;
+  }
+
+  if (status === 'running') {
+    return styles.syncStatusRunning;
+  }
+
+  return styles.syncStatusDefault;
+}
+
 export default function EmailAccountsScreen() {
   const [items, setItems] = useState<EmailAccount[]>([]);
+  const [syncRunsByAccount, setSyncRunsByAccount] = useState<SyncRunsByAccountMap>({});
+  const [syncHistoryErrorByAccount, setSyncHistoryErrorByAccount] =
+    useState<SyncHistoryErrorByAccountMap>({});
+  const [syncHistoryLoadingByAccount, setSyncHistoryLoadingByAccount] =
+    useState<SyncHistoryLoadingByAccountMap>({});
   const [email, setEmail] = useState('');
   const [provider, setProvider] = useState('gmail');
   const [loading, setLoading] = useState(true);
@@ -44,9 +81,61 @@ export default function EmailAccountsScreen() {
 
       const data = await fetchEmailAccounts();
       setItems(data);
+
+      const nextSyncHistoryLoadingByAccount = data.reduce<SyncHistoryLoadingByAccountMap>(
+        (acc, account) => {
+          acc[account.id] = true;
+          return acc;
+        },
+        {}
+      );
+      setSyncHistoryLoadingByAccount(nextSyncHistoryLoadingByAccount);
+      setSyncHistoryErrorByAccount({});
+
+      const syncRunResults = await Promise.all(
+        data.map(async (account) => {
+          try {
+            const runs = await fetchSyncRunsByEmailAccountId(account.id);
+            return { accountId: account.id, runs, error: null as string | null };
+          } catch (err) {
+            console.error('Sync runs load error for account ' + account.id + ':', err);
+            return {
+              accountId: account.id,
+              runs: [] as EmailSyncRun[],
+              error: 'Could not load sync history',
+            };
+          }
+        })
+      );
+
+      const nextSyncRunsByAccount = syncRunResults.reduce<SyncRunsByAccountMap>((acc, result) => {
+        acc[result.accountId] = result.runs;
+        return acc;
+      }, {});
+      const nextSyncHistoryErrorByAccount = syncRunResults.reduce<SyncHistoryErrorByAccountMap>(
+        (acc, result) => {
+          acc[result.accountId] = result.error;
+          return acc;
+        },
+        {}
+      );
+      const nextSyncHistoryLoadingDone = data.reduce<SyncHistoryLoadingByAccountMap>(
+        (acc, account) => {
+          acc[account.id] = false;
+          return acc;
+        },
+        {}
+      );
+
+      setSyncRunsByAccount(nextSyncRunsByAccount);
+      setSyncHistoryErrorByAccount(nextSyncHistoryErrorByAccount);
+      setSyncHistoryLoadingByAccount(nextSyncHistoryLoadingDone);
     } catch (err) {
       console.error('Email accounts load error:', err);
       setError('Could not load email accounts');
+      setSyncRunsByAccount({});
+      setSyncHistoryErrorByAccount({});
+      setSyncHistoryLoadingByAccount({});
     } finally {
       setLoading(false);
     }
@@ -58,23 +147,10 @@ export default function EmailAccountsScreen() {
 
       async function run() {
         try {
-          setLoading(true);
-          setError(null);
-
-          const data = await fetchEmailAccounts();
-
-          if (isMounted) {
-            setItems(data);
-          }
+          await loadEmailAccounts();
         } catch (err) {
-          console.error('Email accounts load error:', err);
-
           if (isMounted) {
-            setError('Could not load email accounts');
-          }
-        } finally {
-          if (isMounted) {
-            setLoading(false);
+            console.error('Email accounts load error:', err);
           }
         }
       }
@@ -84,7 +160,7 @@ export default function EmailAccountsScreen() {
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, [loadEmailAccounts])
   );
 
   async function handleAddEmailAccount() {
@@ -217,6 +293,41 @@ export default function EmailAccountsScreen() {
                   <Text style={styles.rowMeta}>
                     Last synced: {item.lastSyncedAt ?? 'Not synced yet'}
                   </Text>
+
+                  <View style={styles.syncHistoryWrap}>
+                    <Text style={styles.syncHistoryTitle}>Sync history</Text>
+
+                    {syncHistoryLoadingByAccount[item.id] ? (
+                      <Text style={styles.infoText}>Loading sync history...</Text>
+                    ) : syncHistoryErrorByAccount[item.id] ? (
+                      <Text style={styles.errorText}>{syncHistoryErrorByAccount[item.id]}</Text>
+                    ) : (syncRunsByAccount[item.id] ?? []).length === 0 ? (
+                      <Text style={styles.infoText}>No sync runs yet.</Text>
+                    ) : (
+                      <>
+                        {(syncRunsByAccount[item.id] ?? []).slice(0, 3).map((run) => (
+                          <View key={run.id} style={styles.syncRunItem}>
+                            <Text style={[styles.syncStatus, getSyncStatusStyle(run.status)]}>
+                              {run.status}
+                            </Text>
+                            <Text style={styles.syncMeta}>
+                              Started: {formatSyncDate(run.startedAt)}
+                            </Text>
+                            <Text style={styles.syncMeta}>
+                              Candidates found: {run.candidatesFound}
+                            </Text>
+                            {run.status === 'failed' && run.errorMessage ? (
+                              <Text style={styles.syncErrorText}>{run.errorMessage}</Text>
+                            ) : null}
+                          </View>
+                        ))}
+                        <Text style={styles.syncMetaNote}>
+                          Showing last {Math.min(3, (syncRunsByAccount[item.id] ?? []).length)} of{' '}
+                          {(syncRunsByAccount[item.id] ?? []).length}
+                        </Text>
+                      </>
+                    )}
+                  </View>
                 </View>
 
                 <View style={styles.rightCol}>
@@ -345,6 +456,53 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 13,
     color: colors.muted,
+    marginTop: 4,
+  },
+  syncHistoryWrap: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  syncHistoryTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  syncRunItem: {
+    paddingVertical: 8,
+  },
+  syncStatus: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  syncStatusCompleted: {
+    color: colors.success,
+  },
+  syncStatusFailed: {
+    color: '#DC2626',
+  },
+  syncStatusRunning: {
+    color: colors.primary,
+  },
+  syncStatusDefault: {
+    color: colors.muted,
+  },
+  syncMeta: {
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 4,
+  },
+  syncMetaNote: {
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 6,
+  },
+  syncErrorText: {
+    fontSize: 12,
+    color: '#DC2626',
     marginTop: 4,
   },
   rowStatus: {
