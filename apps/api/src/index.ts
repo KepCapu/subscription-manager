@@ -6,6 +6,7 @@ import cardsRouter from './routes/cards';
 import overviewRouter from './routes/overview';
 import emailAccountsRouter from './routes/emailAccounts';
 import subscriptionCandidatesRouter from './routes/subscriptionCandidates';
+import emailSyncRunsRouter from './routes/emailSyncRuns';
 import { errorHandler } from './middleware/errorHandler';
 import { dbPool } from './db/pool';
 
@@ -46,6 +47,7 @@ app.use('/cards', cardsRouter);
 app.use('/overview', overviewRouter);
 app.use('/email-accounts', emailAccountsRouter);
 app.use('/subscription-candidates', subscriptionCandidatesRouter);
+app.use('/email-sync-runs', emailSyncRunsRouter);
 
 app.use(errorHandler);
 
