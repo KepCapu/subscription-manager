@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   confirmSubscriptionCandidate,
   createSubscriptionCandidate,
+  getSubscriptionCandidateById,
   getSubscriptionCandidates,
   updateSubscriptionCandidateStatus,
 } from '../services/subscriptionCandidates';
@@ -21,6 +22,24 @@ router.get('/', async (req, res, next) => {
       items,
       total: items.length,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:id', async (req, res, next) => {
+  try {
+    const item = await getSubscriptionCandidateById(req.params.id);
+
+    if (!item) {
+      res.status(404).json({
+        error: 'SUBSCRIPTION_CANDIDATE_NOT_FOUND',
+        message: 'Subscription candidate not found',
+      });
+      return;
+    }
+
+    res.json(item);
   } catch (error) {
     next(error);
   }

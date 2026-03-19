@@ -41,6 +41,12 @@ export async function fetchSubscriptionCandidates(
   return data.items;
 }
 
+export async function fetchSubscriptionCandidateById(
+  candidateId: string
+): Promise<SubscriptionCandidate> {
+  return apiGet<SubscriptionCandidate>('/subscription-candidates/' + candidateId);
+}
+
 export async function updateSubscriptionCandidateStatus(
   candidateId: string,
   payload: UpdateSubscriptionCandidateStatusPayload

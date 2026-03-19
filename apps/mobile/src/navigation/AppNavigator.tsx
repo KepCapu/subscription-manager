@@ -4,9 +4,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import OverviewScreen from '../screens/OverviewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EmailAccountsScreen from '../screens/EmailAccountsScreen';
-import DetectedSubscriptionsScreen from '../screens/DetectedSubscriptionsScreen';
 import CardsStack from './CardsStack';
 import SubscriptionStack from './SubscriptionStack';
+import DetectedSubscriptionsStack from './DetectedSubscriptionsStack';
 import { colors } from '../theme/colors';
 import { RootTabParamList } from './types';
 
@@ -34,7 +34,7 @@ export default function AppNavigator() {
         <Tab.Screen name="Subscriptions" component={SubscriptionStack} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
         <Tab.Screen name="EmailAccounts" component={EmailAccountsScreen} />
-        <Tab.Screen name="DetectedSubscriptions" component={DetectedSubscriptionsScreen} />
+        <Tab.Screen name="DetectedSubscriptions" component={DetectedSubscriptionsStack} />
       </Tab.Navigator>
     </NavigationContainer>
   );

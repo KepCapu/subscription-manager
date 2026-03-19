@@ -1,17 +1,26 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   confirmSubscriptionCandidate,
   fetchSubscriptionCandidates,
   SubscriptionCandidate,
   updateSubscriptionCandidateStatus,
 } from '../api/subscriptionCandidates';
+import { DetectedSubscriptionsStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 
 type CandidateFilter = 'possible_subscription' | 'confirmed_subscription' | 'one_time_purchase';
 
+type DetectedSubscriptionsScreenNavigationProp =
+  NativeStackNavigationProp<
+    DetectedSubscriptionsStackParamList,
+    'DetectedSubscriptionsList'
+  >;
+
 export default function DetectedSubscriptionsScreen() {
+  const navigation = useNavigation<DetectedSubscriptionsScreenNavigationProp>();
   const [items, setItems] = useState<SubscriptionCandidate[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<CandidateFilter>('possible_subscription');
   const [loading, setLoading] = useState(true);
@@ -197,11 +206,17 @@ export default function DetectedSubscriptionsScreen() {
             <Text style={styles.infoText}>{getEmptyText()}</Text>
           ) : (
             items.map((item, index) => (
-              <View
+              <Pressable
                 key={item.id}
-                style={[
+                onPress={() =>
+                  navigation.navigate('DetectedSubscriptionDetails', {
+                    candidateId: item.id,
+                  })
+                }
+                style={({ pressed }) => [
                   styles.candidateRow,
                   index !== items.length - 1 && styles.rowBorder,
+                  pressed && styles.pressedRow,
                 ]}
               >
                 <View style={styles.leftCol}>
@@ -267,7 +282,7 @@ export default function DetectedSubscriptionsScreen() {
                     </>
                   ) : null}
                 </View>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
