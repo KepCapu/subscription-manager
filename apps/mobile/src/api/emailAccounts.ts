@@ -1,5 +1,6 @@
 import { apiGet, apiPatch, apiPost } from './client';
 import { ListResponse } from '../types/listResponse';
+import { EmailSyncRun } from '../types/emailSyncRun';
 
 export type EmailAccount = {
   id: string;
@@ -40,5 +41,12 @@ export async function updateEmailAccountStatus(
   return apiPatch<EmailAccount, UpdateEmailAccountStatusPayload>(
     '/email-accounts/' + emailAccountId + '/status',
     payload
+  );
+}
+
+export async function triggerEmailAccountSync(emailAccountId: string): Promise<EmailSyncRun> {
+  return apiPost<EmailSyncRun, Record<string, never>>(
+    '/email-accounts/' + emailAccountId + '/sync',
+    {}
   );
 }

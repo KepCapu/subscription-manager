@@ -14,6 +14,7 @@ import {
   createEmailAccount,
   fetchEmailAccounts,
   EmailAccount,
+  triggerEmailAccountSync,
   updateEmailAccountStatus,
 } from '../api/emailAccounts';
 import { fetchSyncRunsByEmailAccountId } from '../api/emailSyncRuns';
@@ -72,6 +73,7 @@ export default function EmailAccountsScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadEmailAccounts = useCallback(async () => {
@@ -222,6 +224,21 @@ export default function EmailAccountsScreen() {
     }
   }
 
+  async function handleRunSync(emailAccountId: string) {
+    try {
+      setSyncingId(emailAccountId);
+      setError(null);
+
+      await triggerEmailAccountSync(emailAccountId);
+      await loadEmailAccounts();
+    } catch (err) {
+      console.error('Run sync error:', err);
+      Alert.alert('Sync failed', 'Could not run sync for this email account.');
+    } finally {
+      setSyncingId(null);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -341,19 +358,34 @@ export default function EmailAccountsScreen() {
                   </Text>
 
                   {item.status === 'active' ? (
-                    <Pressable
-                      onPress={() => handleDeactivate(item.id)}
-                      disabled={updatingId === item.id}
-                      style={({ pressed }) => [
-                        styles.deactivateButton,
-                        updatingId === item.id && styles.actionButtonDisabled,
-                        pressed && updatingId !== item.id && styles.pressedRow,
-                      ]}
-                    >
-                      <Text style={styles.deactivateButtonText}>
-                        {updatingId === item.id ? 'Working...' : 'Deactivate'}
-                      </Text>
-                    </Pressable>
+                    <>
+                      <Pressable
+                        onPress={() => handleRunSync(item.id)}
+                        disabled={syncingId === item.id}
+                        style={({ pressed }) => [
+                          styles.syncButton,
+                          syncingId === item.id && styles.actionButtonDisabled,
+                          pressed && syncingId !== item.id && styles.pressedRow,
+                        ]}
+                      >
+                        <Text style={styles.syncButtonText}>
+                          {syncingId === item.id ? 'Syncing...' : 'Run sync'}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleDeactivate(item.id)}
+                        disabled={updatingId === item.id}
+                        style={({ pressed }) => [
+                          styles.deactivateButton,
+                          updatingId === item.id && styles.actionButtonDisabled,
+                          pressed && updatingId !== item.id && styles.pressedRow,
+                        ]}
+                      >
+                        <Text style={styles.deactivateButtonText}>
+                          {updatingId === item.id ? 'Working...' : 'Deactivate'}
+                        </Text>
+                      </Pressable>
+                    </>
                   ) : null}
                 </View>
               </View>
@@ -522,6 +554,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  syncButton: {
+    marginTop: 10,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  syncButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
   },
   deactivateButtonText: {
     fontSize: 13,
