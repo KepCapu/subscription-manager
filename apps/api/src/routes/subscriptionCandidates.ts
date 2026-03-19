@@ -18,6 +18,10 @@ router.get('/', async (req, res, next) => {
       typeof req.query.status === 'string' && req.query.status.trim()
         ? req.query.status.trim()
         : undefined;
+    const emailAccountId =
+      typeof req.query.emailAccountId === 'string' && req.query.emailAccountId.trim()
+        ? req.query.emailAccountId.trim()
+        : undefined;
 
     if (
       detectedStatus &&
@@ -32,7 +36,17 @@ router.get('/', async (req, res, next) => {
       return;
     }
 
-    const items = await getSubscriptionCandidates(detectedStatus);
+    const filters: { detectedStatus?: string; emailAccountId?: string } = {};
+
+    if (detectedStatus) {
+      filters.detectedStatus = detectedStatus;
+    }
+
+    if (emailAccountId) {
+      filters.emailAccountId = emailAccountId;
+    }
+
+    const items = await getSubscriptionCandidates(filters);
 
     res.json({
       items,

@@ -135,15 +135,26 @@ const subscriptionCandidateSelect = `SELECT
    created_at
  FROM subscription_candidates`;
 
-export async function getSubscriptionCandidates(
-  detectedStatus?: string
-): Promise<SubscriptionCandidate[]> {
+export async function getSubscriptionCandidates(options?: {
+  detectedStatus?: string;
+  emailAccountId?: string;
+}): Promise<SubscriptionCandidate[]> {
   const params: Array<string> = [];
   let query = subscriptionCandidateSelect;
+  const conditions: string[] = [];
 
-  if (detectedStatus) {
-    params.push(detectedStatus);
-    query += ` WHERE detected_status = $1`;
+  if (options?.detectedStatus) {
+    params.push(options.detectedStatus);
+    conditions.push(`detected_status = $${params.length}`);
+  }
+
+  if (options?.emailAccountId) {
+    params.push(options.emailAccountId);
+    conditions.push(`email_account_id = $${params.length}`);
+  }
+
+  if (conditions.length > 0) {
+    query += ` WHERE ${conditions.join(' AND ')}`;
   }
 
   query += ` ORDER BY created_at DESC`;
