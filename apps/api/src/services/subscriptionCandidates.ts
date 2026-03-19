@@ -1,5 +1,4 @@
 import { dbPool } from '../db/pool';
-import { createSubscription } from './subscriptions';
 
 export type SubscriptionCandidate = {
   id: string;
@@ -19,6 +18,7 @@ export type SubscriptionCandidate = {
   sourceLanguage: string | null;
   sourceCountry: string | null;
   confidence: number;
+  materializedSubscriptionId: string | null;
   createdAt: string;
 };
 
@@ -71,11 +71,14 @@ type SubscriptionCandidateRow = {
   source_language: string | null;
   source_country: string | null;
   confidence: string;
+  materialized_subscription_id: string | null;
   created_at: string;
 };
 
 type CardLookupRow = {
   id: string;
+  name: string;
+  last4: string;
 };
 
 function mapSubscriptionCandidate(row: SubscriptionCandidateRow): SubscriptionCandidate {
@@ -97,6 +100,7 @@ function mapSubscriptionCandidate(row: SubscriptionCandidateRow): SubscriptionCa
     sourceLanguage: row.source_language,
     sourceCountry: row.source_country,
     confidence: Number(Number(row.confidence).toFixed(2)),
+    materializedSubscriptionId: row.materialized_subscription_id,
     createdAt: row.created_at,
   };
 }
@@ -119,6 +123,7 @@ const subscriptionCandidateSelect = `SELECT
    source_language,
    source_country,
    confidence::text,
+   materialized_subscription_id,
    created_at
  FROM subscription_candidates`;
 
@@ -199,6 +204,7 @@ export async function createSubscriptionCandidate(
        source_language,
        source_country,
        confidence::text,
+       materialized_subscription_id,
        created_at`,
     [
       input.id,
@@ -250,6 +256,7 @@ export async function updateSubscriptionCandidateStatus(
        source_language,
        source_country,
        confidence::text,
+       materialized_subscription_id,
        created_at`,
     [id, detectedStatus]
   );
@@ -264,51 +271,120 @@ export async function updateSubscriptionCandidateStatus(
 export async function confirmSubscriptionCandidate(
   candidateId: string
 ): Promise<ConfirmSubscriptionCandidateResult> {
-  const candidate = await getSubscriptionCandidateById(candidateId);
+  await dbPool.query('BEGIN');
 
-  if (!candidate) {
-    return { ok: false, reason: 'SUBSCRIPTION_CANDIDATE_NOT_FOUND' };
-  }
+  try {
+    const candidateResult = await dbPool.query<SubscriptionCandidateRow>(
+      `${subscriptionCandidateSelect}
+       WHERE id = $1
+       LIMIT 1
+       FOR UPDATE`,
+      [candidateId]
+    );
 
-  const subscriptionName = candidate.subscriptionName ?? candidate.merchantName;
+    if (candidateResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'SUBSCRIPTION_CANDIDATE_NOT_FOUND' };
+    }
 
-  if (!subscriptionName || candidate.amount === null || !candidate.detectedCardLast4) {
-    return { ok: false, reason: 'CANDIDATE_MISSING_REQUIRED_FIELDS' };
-  }
+    const candidate = mapSubscriptionCandidate(candidateResult.rows[0]);
+    const subscriptionName = candidate.subscriptionName ?? candidate.merchantName;
 
-  const cardResult = await dbPool.query<CardLookupRow>(
-    `SELECT id
-     FROM cards
-     WHERE last4 = $1
-     ORDER BY id ASC
-     LIMIT 1`,
-    [candidate.detectedCardLast4]
-  );
+    if (!subscriptionName || candidate.amount === null || !candidate.detectedCardLast4) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'CANDIDATE_MISSING_REQUIRED_FIELDS' };
+    }
 
-  if (cardResult.rows.length === 0) {
-    return { ok: false, reason: 'CARD_NOT_FOUND' };
-  }
-
-  const subscriptionId = 'sub-from-' + candidate.id;
-
-  const created = await createSubscription({
-    id: subscriptionId,
-    name: subscriptionName,
-    monthlyPrice: candidate.amount,
-    cardId: cardResult.rows[0].id,
-    status: 'active',
-    renewalDate: candidate.detectedRenewalDate,
-  });
-
-  if (!created.ok) {
-    if (created.reason === 'SUBSCRIPTION_ID_ALREADY_EXISTS') {
+    if (candidate.materializedSubscriptionId) {
+      await dbPool.query('ROLLBACK');
       return { ok: false, reason: 'SUBSCRIPTION_ALREADY_CREATED' };
     }
 
-    return { ok: false, reason: 'CARD_NOT_FOUND' };
+    const cardResult = await dbPool.query<CardLookupRow>(
+      `SELECT id, name, last4
+       FROM cards
+       WHERE last4 = $1
+       ORDER BY id ASC
+       LIMIT 1`,
+      [candidate.detectedCardLast4]
+    );
+
+    if (cardResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'CARD_NOT_FOUND' };
+    }
+
+    const card = cardResult.rows[0];
+    const subscriptionId = 'sub-from-' + candidate.id;
+    const billingCardName = `${card.name} ending ${card.last4}`;
+
+    try {
+      await dbPool.query(
+        `INSERT INTO subscriptions (
+          id,
+          name,
+          monthly_price,
+          billing_card_name,
+          card_id,
+          status,
+          renewal_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7::date)`,
+        [
+          subscriptionId,
+          subscriptionName,
+          candidate.amount,
+          billingCardName,
+          card.id,
+          'active',
+          candidate.detectedRenewalDate,
+        ]
+      );
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        await dbPool.query('ROLLBACK');
+        return { ok: false, reason: 'SUBSCRIPTION_ALREADY_CREATED' };
+      }
+
+      throw error;
+    }
+
+    await dbPool.query(
+      `UPDATE cards
+       SET monthly_total = monthly_total + $1,
+           active_subscriptions_count = active_subscriptions_count + 1
+       WHERE id = $2`,
+      [candidate.amount, card.id]
+    );
+
+    const materializeResult = await dbPool.query<{ id: string }>(
+      `UPDATE subscription_candidates
+       SET detected_status = 'confirmed_subscription',
+           materialized_subscription_id = $2
+       WHERE id = $1
+         AND materialized_subscription_id IS NULL
+       RETURNING id`,
+      [candidateId, subscriptionId]
+    );
+
+    if (materializeResult.rows.length === 0) {
+      await dbPool.query('ROLLBACK');
+      return { ok: false, reason: 'SUBSCRIPTION_ALREADY_CREATED' };
+    }
+
+    await dbPool.query('COMMIT');
+    return { ok: true, subscriptionId };
+  } catch (error) {
+    try {
+      await dbPool.query('ROLLBACK');
+    } catch {
+      // no-op
+    }
+
+    throw error;
   }
-
-  await updateSubscriptionCandidateStatus(candidateId, 'confirmed_subscription');
-
-  return { ok: true, subscriptionId };
 }
