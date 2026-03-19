@@ -1,5 +1,13 @@
 import { dbPool } from '../db/pool';
 
+export const VALID_CANDIDATE_STATUSES = [
+  'possible_subscription',
+  'confirmed_subscription',
+  'one_time_purchase',
+  'ignored',
+  'uncertain',
+] as const;
+
 export type SubscriptionCandidate = {
   id: string;
   emailAccountId: string;
@@ -165,6 +173,17 @@ export async function getSubscriptionCandidateById(
 export async function createSubscriptionCandidate(
   input: CreateSubscriptionCandidateInput
 ): Promise<SubscriptionCandidate> {
+  if (
+    input.detectedStatus !== undefined &&
+    !VALID_CANDIDATE_STATUSES.includes(
+      input.detectedStatus as (typeof VALID_CANDIDATE_STATUSES)[number]
+    )
+  ) {
+    throw new Error(
+      'detectedStatus must be one of: possible_subscription, confirmed_subscription, one_time_purchase, ignored, uncertain'
+    );
+  }
+
   const result = await dbPool.query<SubscriptionCandidateRow>(
     `INSERT INTO subscription_candidates (
        id,
@@ -234,6 +253,16 @@ export async function updateSubscriptionCandidateStatus(
   id: string,
   detectedStatus: string
 ): Promise<SubscriptionCandidate | null> {
+  if (
+    !VALID_CANDIDATE_STATUSES.includes(
+      detectedStatus as (typeof VALID_CANDIDATE_STATUSES)[number]
+    )
+  ) {
+    throw new Error(
+      'detectedStatus must be one of: possible_subscription, confirmed_subscription, one_time_purchase, ignored, uncertain'
+    );
+  }
+
   const result = await dbPool.query<SubscriptionCandidateRow>(
     `UPDATE subscription_candidates
      SET detected_status = $2

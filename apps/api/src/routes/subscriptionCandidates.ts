@@ -5,9 +5,12 @@ import {
   getSubscriptionCandidateById,
   getSubscriptionCandidates,
   updateSubscriptionCandidateStatus,
+  VALID_CANDIDATE_STATUSES,
 } from '../services/subscriptionCandidates';
 
 const router = Router();
+const CANDIDATE_STATUS_VALIDATION_MESSAGE =
+  'detectedStatus must be one of: possible_subscription, confirmed_subscription, one_time_purchase, ignored, uncertain';
 
 router.get('/', async (req, res, next) => {
   try {
@@ -15,6 +18,19 @@ router.get('/', async (req, res, next) => {
       typeof req.query.status === 'string' && req.query.status.trim()
         ? req.query.status.trim()
         : undefined;
+
+    if (
+      detectedStatus &&
+      !VALID_CANDIDATE_STATUSES.includes(
+        detectedStatus as (typeof VALID_CANDIDATE_STATUSES)[number]
+      )
+    ) {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: CANDIDATE_STATUS_VALIDATION_MESSAGE,
+      });
+      return;
+    }
 
     const items = await getSubscriptionCandidates(detectedStatus);
 
@@ -71,6 +87,19 @@ router.post('/', async (req, res, next) => {
       res.status(400).json({
         error: 'VALIDATION_ERROR',
         message: 'id, emailAccountId, and sourceMessageId are required',
+      });
+      return;
+    }
+
+    if (
+      detectedStatus !== undefined &&
+      !VALID_CANDIDATE_STATUSES.includes(
+        String(detectedStatus) as (typeof VALID_CANDIDATE_STATUSES)[number]
+      )
+    ) {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: CANDIDATE_STATUS_VALIDATION_MESSAGE,
       });
       return;
     }
@@ -152,9 +181,23 @@ router.patch('/:id/status', async (req, res, next) => {
       return;
     }
 
+    const nextDetectedStatus = String(detectedStatus);
+
+    if (
+      !VALID_CANDIDATE_STATUSES.includes(
+        nextDetectedStatus as (typeof VALID_CANDIDATE_STATUSES)[number]
+      )
+    ) {
+      res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: CANDIDATE_STATUS_VALIDATION_MESSAGE,
+      });
+      return;
+    }
+
     const item = await updateSubscriptionCandidateStatus(
       req.params.id,
-      String(detectedStatus)
+      nextDetectedStatus
     );
 
     if (!item) {
